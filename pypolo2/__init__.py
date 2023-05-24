@@ -7,6 +7,7 @@ from . import robots
 from . import sensors
 from . import strategies
 from . import experiments
+from . import gridcontext
 
 __version__ = "0.0.3"
 
@@ -20,4 +21,5 @@ __all__= [
     "sensors",
     "strategies",
     "experiments",
+    "gridcontext",
 ]

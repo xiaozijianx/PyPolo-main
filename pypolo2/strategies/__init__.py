@@ -8,6 +8,9 @@ from .myopic_planning_mi import MyopicPlanningMI
 from .myopic_lattice_planning_mi import MyopicLatticePlanningMI
 from .myopic_lattice_planning_mi_sprinkler import MyopicLatticePlanningMISprinkler
 from .nonmyopic_lattice_planning_mi_sprinkler import NonMyopicLatticePlanningMISprinkler
+from .nonmyopic_lattice_planning_mi_sprinkler_control import NonMyopicLatticePlanningMISprinklerControl
+from .nonmyopic_lattice_planning_mi_sprinkler_control_mifix import NonMyopicLatticePlanningMISprinklerControlFix
+from .SA_lattice_planning_mi_sprinkler_control import SALatticePlanningMISprinklerControl
 from .strategy import IStrategy
 
 __all__ = [
@@ -21,5 +24,8 @@ __all__ = [
     "MyopicLatticePlanningMI"
     "MyopicLatticePlanningMISprinkler"
     "NonMyopicLatticePlanningMISprinkler"
+    "NonMyopicLatticePlanningMISprinklerControl"
+    "NonMyopicLatticePlanningMISprinklerControlFix"
+    "SALatticePlanningMISprinklerControl"
     "IStrategy",
 ]

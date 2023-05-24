@@ -11,6 +11,7 @@ class VEHICLE(IRobot):
     def __init__(
         self,
         init_state: np.ndarray,
+        water_volume: int,
     ) -> None:
         """
 
@@ -29,6 +30,13 @@ class VEHICLE(IRobot):
         self.movements = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)]
         self.goal_spray_flag = []
         self.spray_flag = True
+        self.water_volume = water_volume
+        self.water_volume_now = water_volume
+        self.Water_replenishment_period = 2
+        self.Water_replenishment_flag = False
+        self.traj = np.zeros((1,2))
+        self.traj[0,0] = init_state[0]
+        self.traj[0,1] = init_state[1]
 
     @staticmethod
     def _check_inputs(
@@ -50,6 +58,7 @@ class VEHICLE(IRobot):
     def set_goals(self,
         goal_states: np.ndarray,
         goal_spray_flag: np.ndarray,
+        water_station: np.ndarray,
     ):
         """
         
@@ -58,8 +67,15 @@ class VEHICLE(IRobot):
         goal_states: np.ndarray, shape=(num_states, dim_states)
         
         """
-        self.goal_states = goal_states.copy()
-        self.goal_spray_flag = goal_spray_flag.copy()
+        if self.water_volume_now >= 1:
+            self.goal_states = goal_states.copy()
+            self.goal_spray_flag = goal_spray_flag.copy()
+        else:
+            self.goal_states = water_station.copy()
+            goal_spray_flag = np.ones((1,1), dtype=bool)
+            goal_spray_flag[0,0] = False
+            self.goal_spray_flag = goal_spray_flag.copy()
+            self.Water_replenishment_flag = True
 
     def update(self) -> None:
         """
@@ -70,6 +86,17 @@ class VEHICLE(IRobot):
             # Update state
             self.state = self.goal_states[0]
             self.spray_flag = self.goal_spray_flag[0]
+            
+            if self.spray_flag == True:
+                self.water_volume_now = self.water_volume_now - 1
+                
+            if self.Water_replenishment_flag == True:
+                self.Water_replenishment_period = self.Water_replenishment_period - 1
+                
+            if self.Water_replenishment_period == 0:
+                self.water_volume_now = self.water_volume
+                self.Water_replenishment_flag = False
+                self.Water_replenishment_period = 2
         
             #update goal state
             self.goal_states = self.goal_states[1:]

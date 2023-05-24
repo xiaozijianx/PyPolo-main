@@ -220,35 +220,7 @@ class GPR(IModel):
         # Prediction
         with torch.no_grad():
             L, iK_y = self.compute_common()
-            Ksn = self.kernel(_x_test, self._x_train)
-            Kss_diag = self.kernel.diag(_x_test)
-            _prior_std = Kss_diag.sqrt()
-            iL_Kns = torch.linalg.solve_triangular(L, Ksn.t(), upper=False)
-            _mean = Ksn @ iK_y
-            var = Kss_diag - iL_Kns.square().sum(0).view(-1, 1)
-            # TODO: variance might be zero when lengthscale is too large.
-            if torch.any(var <= 0.0):
-                print(var.ravel().numpy())
-                raise ValueError("Predictive variance <= 0.0!")
-            var.clamp_(min=self.jitter)
-            _poste_std = var.sqrt()
-        prior_std = _prior_std.numpy()
-        poste_std = _poste_std.numpy()
-        # Post-processing
-        if self.is_normalized:
-            prior_std = self.y_scaler.postprocess_std(prior_std)
-            poste_std = self.y_scaler.postprocess_std(poste_std)
-        return prior_std, poste_std
-    
-    def prior_poste(self, x_test: np.ndarray):
-        # Pre-processing
-        if self.is_normalized:
-            x_test = self.x_scaler.preprocess(x_test)
-
-        _x_test = torch.tensor(x_test, dtype=torch.float64)
-        # Prediction
-        with torch.no_grad():
-            L, iK_y = self.compute_common()
+            iK_y = torch.cholesky_solve(self._y_train, L, upper=False)
             Ksn = self.kernel(_x_test, self._x_train)
             # Kss_diag = self.kernel.diag(_x_test)
             Kss = self.kernel(_x_test, _x_test)
@@ -278,3 +250,79 @@ class GPR(IModel):
             poste_diag_std = self.y_scaler.postprocess_std(poste_diag_std)
             poste_cov = self.y_scaler.postprocess_std(poste_cov)
         return prior_diag_std, poste_diag_std, poste_cov, poste_cov
+    
+    def prior_poste(self, x_test: np.ndarray):
+        # Pre-processing
+        if self.is_normalized:
+            x_test = self.x_scaler.preprocess(x_test)
+            # x_train = self.x_scaler.preprocess(x_train)
+
+        _x_test = torch.tensor(x_test, dtype=torch.float64)
+        # _x_train = torch.tensor(x_train, dtype=torch.float64)
+        # Prediction
+        with torch.no_grad():
+            K = self.kernel(self._x_train, self._x_train)
+            K.diagonal().add_(self.noise)
+            L = linalg.robust_cholesky(K, jitter=self.jitter)
+            # iK_y = torch.cholesky_solve(self._y_train, L, upper=False)
+            Ksn = self.kernel(_x_test, self._x_train)
+            # Kss_diag = self.kernel.diag(_x_test)
+            Kss = self.kernel(_x_test, _x_test)
+            Kss_diag = torch.unsqueeze(torch.diag(Kss), dim=1)
+
+            _prior_diag_std = Kss_diag.sqrt()
+            _prior_cov = Kss.sqrt()
+            iL_Kns = torch.linalg.solve_triangular(L, Ksn.t(), upper=False)
+            # _mean = Ksn @ iK_y
+            _cov = Kss - iL_Kns.t() @ iL_Kns
+            var = torch.unsqueeze(torch.diag(_cov), dim=1)
+            # TODO: variance might be zero when lengthscale is too large.
+            if torch.any(var <= 0.0):
+                print(var.ravel().numpy())
+                raise ValueError("Predictive variance <= 0.0!")
+            var.clamp_(min=self.jitter)
+            _poste_diag_std = var.sqrt()
+            _poste_cov = _cov.sqrt()
+        prior_diag_std = _prior_diag_std.numpy()
+        prior_cov = _prior_cov.numpy()
+        poste_diag_std = _poste_diag_std.numpy()
+        poste_cov = _poste_cov.numpy()
+        # Post-processing
+        if self.is_normalized:
+            prior_diag_std = self.y_scaler.postprocess_std(prior_diag_std)
+            prior_cov = self.y_scaler.postprocess_std(prior_cov)
+            poste_diag_std = self.y_scaler.postprocess_std(poste_diag_std)
+            poste_cov = self.y_scaler.postprocess_std(poste_cov)
+        return prior_diag_std, poste_diag_std, poste_cov, poste_cov
+    
+    def add_data_x(self, x_new: np.ndarray) -> None:
+        """Append new data to `x_train`.
+
+        Parameters
+        ----------
+        x_new: np.ndarray, shape=(num_samples, num_dims)
+            New training inputs.
+        """
+        # self.check_shape(x_new, y_new)
+        if self.is_normalized:
+            x_new = self.x_scaler.preprocess(x_new)
+            # y_new = self.y_scaler.preprocess(y_new)
+        _x_new = torch.tensor(x_new, dtype=torch.float64)
+        # _y_new = torch.tensor(y_new, dtype=torch.float64)
+        print("adding",self._x_train.shape)
+        self._x_train = torch.vstack((self._x_train, _x_new))
+        print(self._x_train.shape)
+        # self._y_train = torch.vstack((self._y_train, _y_new))
+        
+        
+    def reduce_data_x(self, reduce_number: int) -> None:
+        """Append new data to `x_train`.
+        
+        Parameters
+        ----------
+        reduce_number: int, 
+            number of reduce data.
+        """
+        print("reducing",self._x_train.shape,reduce_number)
+        self._x_train = self._x_train[0:-reduce_number]
+        print(self._x_train.shape)

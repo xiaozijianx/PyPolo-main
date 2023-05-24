@@ -18,8 +18,7 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
         self,
         task_extent: List[float],
         rng: np.random.RandomState,
-        num_candidates: int,
-        robot: IRobot,
+        vehicle_team: dict,
     ) -> None:
         """
         Parameters
@@ -28,17 +27,14 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
             Bounding box of the sampling task workspace.
         rng: np.random.RandomState
             Random number generator if `get` has random operations.
-        num_candidates: int
-            Number of candidate locations to evaluate.
-        robot: IRobot
-            A robot model.
+        vehicle_team: dict
+            team of vehicle.
 
         """
         super().__init__(task_extent, rng)
-        self.num_candidates = num_candidates
-        self.robot = robot
+        self.vehicle_team = vehicle_team
         
-    def greedy_search_multi_step(self, length, weights):
+    def greedy_search_multi_step(self, length, weights, id):
         """Get goal states for sampling.
 
         Parameters
@@ -54,7 +50,7 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
 
         """
         graph = nx.DiGraph()
-        position = (int(self.robot.state[0]),int(self.robot.state[1]))
+        position = (int(self.vehicle_team[id].state[0]),int(self.vehicle_team[id].state[1]))
         nodes = [(position, length)]
 
         # for each node, find other nodes that can be moved to with the remaining amount of path length
@@ -63,7 +59,7 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
             if current_length == 0:
                 continue
 
-            for (dr, dc) in self.robot.movements:
+            for (dr, dc) in self.vehicle_team[id].movements:
                 if (dr, dc) == (0,0):
                     continue
                 
@@ -92,8 +88,8 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
         path = [element[0] for element in path]
 
         return path
-
-    def get(self, model: IModel, alpha = 1, num_states: int = 1) -> np.ndarray:
+        
+    def get(self, model: IModel, alpha = 1) -> np.ndarray:
         """Get goal states for sampling.
 
         Parameters
@@ -129,42 +125,66 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
             print(mi_all.ravel())
             raise ValueError("Predictive MI < 0.0!")
         
-        # Normalized scores
-        # normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
-        normed_mi = (mi_all.max() - mi_all) / mi_all.ptp()
-        normed_effect = (sprinkeffect_all - sprinkeffect_all.min()) / sprinkeffect_all.ptp()
+        result_mean = mean.copy()
+        result_mi_all = mi_all.copy()
+        result_sprinkeffect_all = sprinkeffect_all.copy()
+        result = dict()
         
-        # normed_mi = mi_all / np.sum(mi_all)
-        # normed_effect = sprinkeffect_all / np.sum(sprinkeffect_all)
-        
-        #trans to matrix form
-        mi = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
-        sprinkeffect = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
-
-
-        #set threshold that sprinkeffect under this threshold means don't spray
-        threshold = 20
-        for i in range (self.task_extent[0],self.task_extent[1]+1):
-            for j in range (self.task_extent[2],self.task_extent[3]+1):
-                mi[i,j] = normed_mi[i*(self.task_extent[3]+1-self.task_extent[2])+j]
-                if normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j] > threshold:
-                    sprinkeffect[i,j] = normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j]
-        
-        scores = alpha*mi + (1-alpha)*sprinkeffect
+        for id, vehicle in self.vehicle_team.items():
+            # Normalized scores
+            # normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
+            normed_mi = (mi_all.max() - mi_all) / mi_all.ptp()
+            normed_effect = (sprinkeffect_all - sprinkeffect_all.min()) / sprinkeffect_all.ptp()
             
-        path = self.greedy_search_multi_step(8,scores)[1:]
-        
-        goal_states = np.zeros((len(path),2))
-        spray_flag = np.ones((len(path),1), dtype=bool)
-        
-        # Append waypoint
-        for index, location in enumerate(path):
-            goal_states[index,0] = location[0]
-            goal_states[index,1] = location[1]
-            #find point under threshold
-            if sprinkeffect[location[0],location[1]] == 0:
-                spray_flag[index,0] = False
-        
-        return goal_states,spray_flag,mi_all,mean,sprinkeffect_all
+            # normed_mi = mi_all / np.sum(mi_all)
+            # normed_effect = sprinkeffect_all / np.sum(sprinkeffect_all)
+            
+            #trans to matrix form
+            mi = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
+            sprinkeffect = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
+            
+            #set threshold that sprinkeffect under this threshold means don't spray
+            threshold = 25
+            for i in range (self.task_extent[0],self.task_extent[1]+1):
+                for j in range (self.task_extent[2],self.task_extent[3]+1):
+                    mi[i,j] = normed_mi[i*(self.task_extent[3]+1-self.task_extent[2])+j]
+                    if sprinkeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j] > threshold:
+                        sprinkeffect[i,j] = normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j]
+                        
+            scores = alpha*mi + (1-alpha)*sprinkeffect
+
+            path = self.greedy_search_multi_step(8,scores,id)[1:]
+
+            goal_states = np.zeros((len(path),2))
+            spray_flag = np.ones((len(path),1), dtype=bool)
+
+            # Append waypoint
+            for index, location in enumerate(path):
+                goal_states[index,0] = location[0]
+                goal_states[index,1] = location[1]
+                #find point under threshold
+                if sprinkeffect[location[0],location[1]] == 0:
+                    spray_flag[index,0] = False
+            
+            result[id] = (goal_states,spray_flag)
+            
+            #reduce effect
+            for i in range(len(path)):
+                if self.vehicle_team[id].water_volume_now > i:
+                    for m in range(3):
+                        for n in range(3):
+                            r = goal_states[i,0] -1 + m
+                            c = goal_states[i,1] -1 + n
+                            if r < self.task_extent[0] or r > self.task_extent[1] or c < self.task_extent[2] or c > self.task_extent[3]:
+                                continue
+                            if m == 1 and n == 1:
+                                mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(0.9**i*2)*mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
+                                if spray_flag[i,0] == True:
+                                    sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(1-(0.9**i*0.3))*sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
+                            if spray_flag[i,0] == True:
+                                sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(1-(0.9**i*0.2))*sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
+                            mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(0.9**i*1.5)*mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
+                
+        return result, result_mi_all, result_mean, result_sprinkeffect_all
     
    

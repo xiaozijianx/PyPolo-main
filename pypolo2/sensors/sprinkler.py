@@ -87,6 +87,7 @@ class Sprinkler(ISensor):
 
         """
         env = self.env.copy()
+        effect = 0
         if spray_flag:
             if x_spray.ndim == 1:
                 x_spray = x_spray.reshape(1, -1)
@@ -100,7 +101,9 @@ class Sprinkler(ISensor):
                         continue
                     elif a == 1 and b ==1:
                         env[c1,c2] = 0.7*env[c1,c2]
+                        effect = effect + 0.3*env[c1,c2]
                     else:
                         env[c1,c2] = 0.8*env[c1,c2]
+                        effect = effect + 0.2*env[c1,c2]
         self.env = env.copy()
-        return env
+        return env, effect
