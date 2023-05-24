@@ -43,7 +43,7 @@ class GridMovingContext():
     self.curr_trace_set = self.calculate_trace_set()
     
     #当前轨迹所覆盖矩阵
-    self.curr_matrixA, self.curr_matrixB, self.curr_matrixC, self.curr_matrixD = self.calculate_matrix()
+    self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
     
     #可选动作长度
     self.possible_actions = len(self.move_matrix)
@@ -82,14 +82,17 @@ class GridMovingContext():
     #calculate mi about select point for all points
     if method == 1:
       #calculate mi at  one time point
-      curr_matrixC = self.curr_matrixC
-      prior_diag_std, poste_diag_std, poste_cov, poste_cov = self.model.prior_poste(curr_matrixC)
-      hprior = gaussian_entropy(prior_diag_std.ravel())
-      hposterior = gaussian_entropy(poste_diag_std.ravel())
-      mi_all = hprior - hposterior
-      if np.any(mi_all < 0.0):
-          print(mi_all.ravel())
-          raise ValueError("Predictive MI < 0.0!")
+      curr_matrixB = self.curr_matrixB
+      allstate = self.allstate
+      self.model.add_data_x(curr_matrixB)
+      prior_diag_std, poste_diag_std, poste_cov, poste_cov = self.model.prior_poste(allstate)
+      poste_cov
+      # hprior = gaussian_entropy(prior_diag_std.ravel())
+      # hposterior = gaussian_entropy(poste_diag_std.ravel())
+      # mi_all = hprior - hposterior
+      # if np.any(mi_all < 0.0):
+      #     print(mi_all.ravel())
+      #     raise ValueError("Predictive MI < 0.0!")
     
     
     return 0
@@ -100,34 +103,27 @@ class GridMovingContext():
     matrixA =  np.zeros(self.map_shape)
     for i in range(self.agent_number):
       for j in range(self.time + 1):
+        if j == 0:
+          continue
         x = self.curr_trace_set[i, j, 0:2][0].astype(np.int16)
         y = self.curr_trace_set[i, j, 0:2][1].astype(np.int16)
         matrixA[x, y] += 1
-        
-    #second matrix for spray effect
-    matrixB = np.zeros(self.map_shape)
-    for j in range(self.time + 1):
-      for i in range(self.agent_number):
-        if self.curr_trace_set[i, j, 2] == 1:
-          x = self.curr_trace_set[i, j, 0:2][0].astype(np.int16)
-          y = self.curr_trace_set[i, j, 0:2][1].astype(np.int16)
-          matrixB[x, y] += 1
           
     #third matrix for mi calculate at one times
     num = 0
-    matrixC = np.zeros(((self.time+1)*self.agent_number,3))
+    matrixB = np.zeros(((self.time+1)*self.agent_number,3))
     for x in range(self.map_shape[0]):
       for y in range(self.map_shape[1]):
         if matrixA[x, y] > 0.5:
-          matrixC[num,0] = x
-          matrixC[num,1] = y
-          matrixC[num,2] = self.model.time_stamp
+          matrixB[num,0] = x
+          matrixB[num,1] = y
+          matrixB[num,2] = self.model.time_stamp
           num = num + 1
-    matrixC = matrixC[0:num]
+    matrixB = matrixB[0:num]
     
     #fourth matrix for mi calculate at different times
     num = 0
-    matrixD = np.zeros(((self.time+1)*self.agent_number,3))
+    matrixC = np.zeros(((self.time+1)*self.agent_number,3))
     mid = np.zeros((1,3))
     for j in range(self.time + 1):
       for i in range(self.agent_number):
@@ -138,14 +134,14 @@ class GridMovingContext():
         if np.all(np.any(can == mid, axis=1)):
           continue
         mid = np.vstack((mid,can))
-        matrixD[num,0] = x
-        matrixD[num,1] = y
-        matrixD[num,2] = z
+        matrixC[num,0] = x
+        matrixC[num,1] = y
+        matrixC[num,2] = z
         num = num + 1
       mid = np.zeros((1,3))
-    matrixD = matrixD[0:num]
+    matrixC = matrixC[0:num]
     
-    return matrixA, matrixB, matrixC, matrixD
+    return matrixA, matrixB, matrixC
   
   def calculate_trace_set(self):
     curr_trace_set =  np.zeros((self.agent_number, self.time + 1, 4))
