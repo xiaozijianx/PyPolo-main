@@ -62,11 +62,13 @@ class GridMovingContext():
       for j in range (self.task_extent[2],self.task_extent[3]+1):
         sprinkeffect[i,j] = normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j]
         
+    spray_time = 0
     for j in range(self.time + 1):
       for i in range(self.agent_number):
         if self.curr_trace_set[i, j, 2] == 1:
           r0 = curr_trace_set[i, j, 0]
           c0 = curr_trace_set[i, j, 1]
+          spray_time = spray_time + 1
           for a in range(3):
             for b in range(3):
               r = int(r0 - 1 + a)
@@ -79,6 +81,9 @@ class GridMovingContext():
                   spray_effect = spray_effect + 0.2 * (1-0.9)**j * sprinkeffect[r,c]
                   sprinkeffect[r,c] = (1 - 0.2 ) * sprinkeffect[r,c]
 
+    #calculate spray effect per spray time
+    spray_effect_arv = spray_effect / spray_time
+
     #calculate mi about select point for all points
     if method == 1:
       #calculate mi at  one time point
@@ -86,16 +91,10 @@ class GridMovingContext():
       allstate = self.allstate
       self.model.add_data_x(curr_matrixB)
       prior_diag_std, poste_diag_std, poste_cov, poste_cov = self.model.prior_poste(allstate)
-      poste_cov
-      # hprior = gaussian_entropy(prior_diag_std.ravel())
-      # hposterior = gaussian_entropy(poste_diag_std.ravel())
-      # mi_all = hprior - hposterior
-      # if np.any(mi_all < 0.0):
-      #     print(mi_all.ravel())
-      #     raise ValueError("Predictive MI < 0.0!")
-    
-    
-    return 0
+      mi = np.linalg.det(poste_cov)
+      print(mi)
+
+    return sprinkeffect, mi, spray_effect_arv
 
   def calculate_matrix(self):
     #calculate three matrix, one for spray effect, onr for mi and one as before
@@ -184,5 +183,7 @@ class GridMovingContext():
     if(np.max(agent_position_list[:, 0] >= self.map_shape[0]) == True):
       return False
     if(np.max(agent_position_list[:, 1] >= self.map_shape[1]) == True):
+      return False
+    if(np.max(agent_position_list[:, 2] >= 10)):
       return False
     return True
