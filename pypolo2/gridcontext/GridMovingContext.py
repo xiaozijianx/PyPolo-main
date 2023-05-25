@@ -91,7 +91,7 @@ class GridMovingContext():
       allstate = self.allstate
       self.model.add_data_x(curr_matrixB)
       prior_diag_std, poste_diag_std, poste_cov, poste_cov = self.model.prior_poste(allstate)
-      mi = np.linalg.det(poste_cov)
+      mi = -1 * np.linalg.det(poste_cov)
       print(mi)
 
     return sprinkeffect, mi, spray_effect_arv

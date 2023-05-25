@@ -69,15 +69,17 @@ def SimulatedAnnealing(origin_mc_context: GridMovingContext, *, n_playout=10000,
         new_mc_context = copy.deepcopy(curr_context)
         do_move(new_mc_context, rand_agent, rand_time, rand_action, try_result)
         #计算前后得分
-        sq1 = curr_context.CalculateSQ()
-        sq2 = new_mc_context.CalculateSQ()
-        delta_e = sq1 - sq2
+        sq1_1, sq1_2, sq1_3 = curr_context.CalculateSQ()
+        sq2_1, sq2_2, sq2_3 = new_mc_context.CalculateSQ()
+        delta_e_1 = sq1_1 - sq2_1
+        delta_e_2 = sq1_2 - sq2_2
+        delta_e_3 = sq1_3 - sq2_3
         # better, always accept
-        if(delta_e >= 0):
+        if(delta_e_1 >= 0 or delta_e_2 >= 0 or delta_e_3 >= 0):
           curr_context = new_mc_context
         else:
           # accept by chance
-          accept_prob = np.exp(delta_e / (curr_k * Temp))
+          accept_prob = np.exp(delta_e_1 / (curr_k * Temp))
           # accept.append(accept_prob)
           if(random.random() < accept_prob):
             curr_context = new_mc_context
