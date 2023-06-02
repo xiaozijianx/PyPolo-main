@@ -271,7 +271,7 @@ class GPR(IModel):
             Kss_diag = torch.unsqueeze(torch.diag(Kss), dim=1)
 
             _prior_diag_std = Kss_diag.sqrt()
-            _prior_cov = Kss.sqrt()
+            _prior_cov = Kss
             iL_Kns = torch.linalg.solve_triangular(L, Ksn.t(), upper=False)
             # _mean = Ksn @ iK_y
             _cov = Kss - iL_Kns.t() @ iL_Kns
@@ -282,7 +282,7 @@ class GPR(IModel):
                 raise ValueError("Predictive variance <= 0.0!")
             var.clamp_(min=self.jitter)
             _poste_diag_std = var.sqrt()
-            _poste_cov = _cov.sqrt()
+            _poste_cov = _cov
         prior_diag_std = _prior_diag_std.numpy()
         prior_cov = _prior_cov.numpy()
         poste_diag_std = _poste_diag_std.numpy()
@@ -290,12 +290,12 @@ class GPR(IModel):
         # Post-processing
         if self.is_normalized:
             prior_diag_std = self.y_scaler.postprocess_std(prior_diag_std)
-            prior_cov = self.y_scaler.postprocess_std(prior_cov)
+            prior_cov = self.y_scaler.postprocess_std(self.y_scaler.postprocess_std(prior_cov))
             poste_diag_std = self.y_scaler.postprocess_std(poste_diag_std)
-            poste_cov = self.y_scaler.postprocess_std(poste_cov)
-        return prior_diag_std, poste_diag_std, poste_cov, poste_cov
+            poste_cov = self.y_scaler.postprocess_std(self.y_scaler.postprocess_std(poste_cov))
+        return prior_diag_std, poste_diag_std, prior_cov, poste_cov
     
-    def add_data_x(self, x_new: np.ndarray) -> None:
+    def add_data_x(self, x_new: np.ndarray):
         """Append new data to `x_train`.
 
         Parameters
@@ -304,14 +304,16 @@ class GPR(IModel):
             New training inputs.
         """
         # self.check_shape(x_new, y_new)
+        if x_new.shape[0] == 0:
+            return 0
         if self.is_normalized:
             x_new = self.x_scaler.preprocess(x_new)
             # y_new = self.y_scaler.preprocess(y_new)
         _x_new = torch.tensor(x_new, dtype=torch.float64)
         # _y_new = torch.tensor(y_new, dtype=torch.float64)
-        print("adding",self._x_train.shape)
+        # print("adding",self._x_train.shape)
         self._x_train = torch.vstack((self._x_train, _x_new))
-        print(self._x_train.shape)
+        # print(self._x_train.shape)
         # self._y_train = torch.vstack((self._y_train, _y_new))
         
         
@@ -323,6 +325,18 @@ class GPR(IModel):
         reduce_number: int, 
             number of reduce data.
         """
-        print("reducing",self._x_train.shape,reduce_number)
+        # print("reducing",self._x_train.shape,reduce_number)
         self._x_train = self._x_train[0:-reduce_number]
-        print(self._x_train.shape)
+        # print(self._x_train.shape)
+        
+    def get_data_x(self) -> None:
+        """Append new data to `x_train`.
+
+        Parameters
+        ----------
+        
+        """
+        x_train = self._x_train.numpy()
+        if self.is_normalized:
+            x_train = self.x_scaler.postprocess(x_train)
+        return x_train

@@ -9,10 +9,7 @@ class Sprinkler(ISensor):
     """Sprinkler sensor and operator."""
     def __init__(
         self,
-        rate: float,
-        env: np.ndarray,
-        env_extent: List[float],
-        noise_scale: float,
+        Setting,
     ) -> None:
         """
 
@@ -28,9 +25,9 @@ class Sprinkler(ISensor):
             Standard deviation of the observational Gaussian white noise.
 
         """
-        super().__init__(rate)
-        self.env = env.copy()
-        self.noise_scale = noise_scale
+        super().__init__(Setting.sensing_rate)
+        self.env = Setting.env.copy()
+        self.noise_scale = Setting.noise_scale
 
     def sense(
         self,

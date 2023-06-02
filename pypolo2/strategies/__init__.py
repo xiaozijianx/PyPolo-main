@@ -10,6 +10,9 @@ from .myopic_lattice_planning_mi_sprinkler import MyopicLatticePlanningMISprinkl
 from .nonmyopic_lattice_planning_mi_sprinkler import NonMyopicLatticePlanningMISprinkler
 from .nonmyopic_lattice_planning_mi_sprinkler_control import NonMyopicLatticePlanningMISprinklerControl
 from .nonmyopic_lattice_planning_mi_sprinkler_control_mifix import NonMyopicLatticePlanningMISprinklerControlFix
+from .traversal_lattice_planning_mi_sprinkler_control import TraversalLatticePlanningMISprinklerControl
+from .time_traversal_lattice_planning_mi_sprinkler_control import TimeTraversalLatticePlanningMISprinklerControl
+from .traversal_lattice_planning_mi_sprinkler_control_selecttoall import TraversalLatticePlanningMISprinklerControlSelecttoALL
 from .SA_lattice_planning_mi_sprinkler_control import SALatticePlanningMISprinklerControl
 from .strategy import IStrategy
 
@@ -26,6 +29,9 @@ __all__ = [
     "NonMyopicLatticePlanningMISprinkler"
     "NonMyopicLatticePlanningMISprinklerControl"
     "NonMyopicLatticePlanningMISprinklerControlFix"
+    "TraversalLatticePlanningMISprinklerControl"
+    "TraversalLatticePlanningMISprinklerControlSelecttoALL"
+    "TimeTraversalLatticePlanningMISprinklerControl"
     "SALatticePlanningMISprinklerControl"
     "IStrategy",
 ]

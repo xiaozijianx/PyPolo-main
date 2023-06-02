@@ -6,6 +6,131 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from scipy import interpolate
 
+import matplotlib.animation
+import matplotlib.cm as cm
+import matplotlib.colors as colors
+
+# Define animate function for both subplots
+def visual(vehicle_team, Setting):
+    # Create two subplots for env_list and mi_list heatmaps
+    fig, axs = plt.subplots(2, 2, figsize=(8, 7))
+    ax1, ax2 = axs[0]
+    ax3, ax4 = axs[1]
+
+    ax1.set_title('env and trajectory')
+    ax1.set_xlabel('Column')
+    ax1.set_ylabel('Row')
+
+    ax2.set_title('MI')
+    ax2.set_xlabel('Column')
+    ax2.set_ylabel('Row')
+
+    ax3.set_title('Observed env')
+    ax3.set_xlabel('Column')
+    ax3.set_ylabel('Row')
+
+    ax4.set_title('Computed effect')
+    ax4.set_xlabel('Column')
+    ax4.set_ylabel('Row')
+
+    # Set axis limits for both subplots
+    ax1.axis([-0.5, 19.5, -0.5, 19.5])
+    ax2.axis([-0.5, 19.5, -0.5, 19.5])
+    ax3.axis([-0.5, 19.5, -0.5, 19.5])
+    ax4.axis([-0.5, 19.5, -0.5, 19.5])
+
+    # Invert y-axis for both subplots
+    ax1.invert_yaxis()
+    ax2.invert_yaxis()
+    ax3.invert_yaxis()
+    ax4.invert_yaxis()
+
+    # Create heatmap objects for both subplots
+    heatmap1 = Setting.env_list[0]
+    heatmap2 = Setting.mi_list[0]
+    heatmap3 = Setting.pred_list[0]
+    heatmap4 = Setting.sprinkeffect_list[0]
+
+    im1 = ax1.imshow(heatmap1, cmap=cm.coolwarm, interpolation='nearest', origin='lower')
+    im2 = ax2.imshow(heatmap2, cmap=cm.coolwarm, interpolation='nearest', origin='lower')
+    im3 = ax3.imshow(heatmap3, cmap=cm.coolwarm, interpolation='nearest', origin='lower')
+    im4 = ax4.imshow(heatmap4, cmap=cm.coolwarm, interpolation='nearest', origin='lower')
+
+    # Add colorbars to both subplots
+    cbar1 = fig.colorbar(im1, ax=ax1)
+    cbar2 = fig.colorbar(im2, ax=ax2)
+    cbar3 = fig.colorbar(im3, ax=ax3)
+    cbar4 = fig.colorbar(im4, ax=ax4)
+
+    # Plot the initial trajectory on the third subplot
+    l_list = []
+    for id,vehicle in vehicle_team.items():
+        arr = vehicle.traj.copy()
+        l, = ax1.plot([],[], color='black', linewidth=1)
+        l_list.append(l)
+
+    # Define the coordinates of the triangles
+    triangles = []
+    for i in range(Setting.x_station.shape[0]):
+        triangles.append((Setting.x_station[i,0],Setting.x_station[i,1]))
+        
+    triangles2 = []
+    for i in range(Setting.water_station.shape[0]):
+        triangles2.append((Setting.water_station[i,0],Setting.water_station[i,1]))
+
+    # Define the size of the triangles
+    size = 0.3
+
+    # Plot each triangle using the fill function
+    for x, y in triangles:
+        ax1.fill([y-size, y, y+size], [x+size, x-size, x+size], color='yellow', alpha=0.8)
+        
+    for x, y in triangles2:
+        ax1.fill([y-size, y, y+size], [x+size, x-size, x+size], color='black', alpha=0.8)
+
+    # Define animate function for both subplots
+    def animate(i):
+        heatmap1 = Setting.env_list[i]
+        heatmap2 = Setting.mi_list[i]
+        heatmap3 = Setting.pred_list[i]
+        heatmap4 = Setting.sprinkeffect_list[i]
+        
+        im1.set_data(heatmap1)
+        im2.set_data(heatmap2)
+        im3.set_data(heatmap3)
+        im4.set_data(heatmap4)
+        
+        # Adjust the color range of the heatmap
+        im1.set_clim(vmin=0, vmax=100)
+        im2.set_clim(vmin=0, vmax=1.5)
+        im3.set_clim(vmin=0, vmax=100)
+        im4.set_clim(vmin=0, vmax=50)
+        
+        for id,vehicle in vehicle_team.items():
+            arr = vehicle.traj.copy()
+            
+            # Extract the x-coordinates and y-coordinates up to time i
+            x = arr[:i+1, 0]
+            y = arr[:i+1, 1]
+            # Update the trajectory with the current x and y coordinates
+            l_list[id-1].set_data(y, x)
+
+        return im1, im2, im3, im4, l_list
+
+    # Create animation object for both subplots
+    ani = matplotlib.animation.FuncAnimation(fig, animate, frames = Setting.max_num_samples-1)
+
+    filename = './outputs/x{}_y{}_{}_{}_alpha{}_{}_{}_{}_teamsize{}_threshold{}_step{}_result.mp4'.format(Setting.grid_x, Setting.grid_y,Setting.Strategy,\
+        Setting.Env,Setting.alpha,Setting.adaptive,Setting.With_water,Setting.spray,Setting.team_size,Setting.threshold,Setting.step)
+    ani.save(filename, writer='ffmpeg', fps=10)
+
+    return ani
+    
+
+
+
+
+
 plt.rcParams["image.origin"] = "lower"
 plt.rcParams["image.cmap"] = "jet"
 plt.rcParams["image.interpolation"] = "gaussian"

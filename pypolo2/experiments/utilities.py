@@ -6,11 +6,11 @@ import torch
 import pypolo2
 
 
-def seed_everything(seed):
-    random.seed(seed)
-    rng = np.random.RandomState(seed)
-    torch.manual_seed(seed)
-    print(f"Set random seed to {seed} in random, numpy, and torch.")
+def seed_everything(Setting):
+    random.seed(Setting.seed)
+    rng = np.random.RandomState(Setting.seed)
+    torch.manual_seed(Setting.seed)
+    print(f"Set random seed to {Setting.seed} in random, numpy, and torch.")
     return rng
 
 

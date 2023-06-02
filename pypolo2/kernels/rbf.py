@@ -8,8 +8,7 @@ from .kernel import IKernel
 class RBF(IKernel):
     def __init__(
         self,
-        amplitude: float,
-        lengthscale: float,
+        Setting,
     ) -> None:
         """
 
@@ -27,8 +26,8 @@ class RBF(IKernel):
             larger radius.
 
         """
-        super().__init__(amplitude)
-        self.__free_lengthscale = Parameter(linalg.unconstraint(lengthscale))
+        super().__init__(Setting.amplitude)
+        self.__free_lengthscale = Parameter(linalg.unconstraint(Setting.lengthscale))
 
     @property
     def lengthscale(self):

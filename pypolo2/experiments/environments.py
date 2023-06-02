@@ -88,15 +88,14 @@ def get_environment(name, data_path):
 
 
 class Diffusion_Model():
-    def __init__(self, diffusivity=1, x_range = 10, y_range = 10,\
-                 initial_field = np.zeros((10, 10)), R_field = np.zeros((10, 10))):
-        self.diffusivity = diffusivity
-        self.x_range = x_range
-        self.y_range = y_range
-        self.grid = pde.UnitGrid([x_range, y_range])
-        self.R_field = pde.ScalarField(grid = self.grid, data = R_field)
-        self.initial_field = pde.ScalarField(grid = self.grid, data = initial_field)
-        self.PHY_PDE = DiffusionPDE_withR(diffusivity=diffusivity, R = self.R_field)
+    def __init__(self, Setting):
+        self.diffusivity = Setting.diffusivity_K
+        self.x_range = Setting.grid_x
+        self.y_range = Setting.grid_y
+        self.grid = pde.UnitGrid([Setting.grid_x, Setting.grid_y])
+        self.R_field = pde.ScalarField(grid = self.grid, data = Setting.R)
+        self.initial_field = pde.ScalarField(grid = self.grid, data = Setting.env)
+        self.PHY_PDE = DiffusionPDE_withR(diffusivity=self.diffusivity, R = self.R_field)
         
     def solve(self, t):
         return self.PHY_PDE.solve(self.initial_field, t_range = t).data

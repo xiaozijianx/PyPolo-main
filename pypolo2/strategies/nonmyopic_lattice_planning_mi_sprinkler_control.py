@@ -89,7 +89,7 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
 
         return path
         
-    def get(self, model: IModel, alpha = 1) -> np.ndarray:
+    def get(self, model: IModel, Setting) -> np.ndarray:
         """Get goal states for sampling.
 
         Parameters
@@ -144,20 +144,21 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
             sprinkeffect = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
             
             #set threshold that sprinkeffect under this threshold means don't spray
-            threshold = 25
+            threshold = Setting.threshold
             for i in range (self.task_extent[0],self.task_extent[1]+1):
                 for j in range (self.task_extent[2],self.task_extent[3]+1):
                     mi[i,j] = normed_mi[i*(self.task_extent[3]+1-self.task_extent[2])+j]
                     if sprinkeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j] > threshold:
                         sprinkeffect[i,j] = normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j]
                         
-            scores = alpha*mi + (1-alpha)*sprinkeffect
+            scores = Setting.alpha*mi + (1-Setting.alpha)*sprinkeffect
 
             path = self.greedy_search_multi_step(8,scores,id)[1:]
 
             goal_states = np.zeros((len(path),2))
             spray_flag = np.ones((len(path),1), dtype=bool)
-
+            # spray_flag = np.zeros((len(path),1), dtype=bool)
+            
             # Append waypoint
             for index, location in enumerate(path):
                 goal_states[index,0] = location[0]
