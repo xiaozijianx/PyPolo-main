@@ -13,7 +13,7 @@ class Config:
                  lr_hyper = 0.01, lr_nn = 0.001,
                  team_size = 5, water_volume=6, replenish_speed = 2,
                  max_num_samples = 40, current_step = 0 ,bound = 30, alpha = 1.5,
-                 Strategy_Name = "SA_OnlyonetimeMI_simpleeffect",
+                 Strategy_Name = "forestfire_Without_Operation",
                  #"forestfire_Without_Operation",
                  # forestfire_Nonmyopic_Adaptive_Operation
                  # forestfire_Nonmyopic_Adaptive_Sensing_Operation

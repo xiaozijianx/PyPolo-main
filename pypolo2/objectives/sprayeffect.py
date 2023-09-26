@@ -1,20 +1,6 @@
 from typing import List
 import numpy as np
 
-def calculate_effect(pollution):
-    if pollution<40:
-        return 0.0006 * pollution
-    elif pollution<60:
-        return 0.02 * pollution
-    elif pollution<80:
-        return 0.06 * pollution
-    elif pollution<100:
-        return 0.2 * pollution
-    elif pollution<120:
-        return 0.3 * pollution
-    elif pollution>=120:
-        return 0.4 * pollution
-
 def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,extent: List[float]) -> np.ndarray:
     """
     Compute the effect of sprayer.
@@ -30,8 +16,7 @@ def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,e
     Returns
     -------
     spray_effect: np.ndarray
-       启发式的洒水效果函数,与洒水区域的污染物浓度相关,区域污染物浓度低于40，效果为0。40-60时，效果为0.02.60-80时，效果为0.06 。80以上时，效果为0.2
-       周围区域的效果为洒水区域的50%。
+       启发式的洒水效果函数
 
     """
     spray_effect_list = []
@@ -49,12 +34,12 @@ def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,e
                     row_index = np.where(np.all(allstate == np.array([c1, c2, c3]), axis=1))[0]
                     if a == 1 and b == 1:
                         if row_index.size > 0:
-                            effect = effect + calculate_effect(mean[row_index[0]])
+                            effect = effect + 0.2*mean[row_index[0]]
                         else:
                             raise ValueError
                     else:
                         if row_index.size > 0:
-                            effect = effect + 0.5 * calculate_effect(mean[row_index[0]])
+                            effect = effect + 0.15*mean[row_index[0]]
                         else:
                             raise ValueError
         spray_effect_list.append(effect)      
