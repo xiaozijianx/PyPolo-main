@@ -1,4 +1,0 @@
-yapf
-isort
-pytest
-pyright

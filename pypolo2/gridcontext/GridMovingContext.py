@@ -6,24 +6,36 @@ from time import time
 
 import itertools
 import numpy as np
+import math
 # from ..Common.QFunctions import time_decay_aggregation, calculate_kldiv
 # from ..Common.common import even_dist, gaussian_dist, dg_corner_dist, noise_dist
 from ..models import IModel
-from ..objectives.entropy import gaussian_entropy
+from ..objectives.entropy import gaussian_entropy, gaussian_entropy_multivariate
+from ..objectives.sprayeffect import spray_effect, calculate_effect
 MoveMatrix2D = list(itertools.product([-1, 0, 1], [-1, 0, 1]))
-MoveMatrix2DWithSprayControl = list(itertools.product([-1, 0, 1], [-1, 0, 1], [0, 1]))
+MoveMatrix2DWithSprayControl = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))#暂时假设每一次均只能选择一步，并选择是否洒水，1：洒水，-1：补水
+SprayControl = list(itertools.product([-1, 0, 1]))
 
 class GridMovingContext():
-  def __init__(self, map_shape, time, agent_init_position, model:IModel, sprinkeffect_all, allstate, move_matrix = MoveMatrix2DWithSprayControl, alpha = 0.5) -> None:
+  def __init__(self, agent_init_position, model:IModel, pollution_distribute, allpoint, Setting, move_matrix = MoveMatrix2DWithSprayControl, alpha = 0.5) -> None:
     """
     Accepted keywords:
     target_dist: A mapshape sized map, indicating Object data value distributions.
     NOTE: the length of trace set is 1 more than time
     """
+    #参数
+    self.Setting = Setting
+    if Setting.current_step > Setting.max_num_samples - Setting.sche_step:
+      if Setting.max_num_samples - Setting.current_step > 5:
+        self.Setting.sche_step = Setting.max_num_samples - Setting.current_step
+      else:
+        self.Setting.sche_step = 5
+    else:
+      self.Setting.sche_step = Setting.sche_step
     #作业区域
-    self.map_shape = map_shape
+    self.map_shape = (Setting.task_extent[1], Setting.task_extent[3])
     #规划时长
-    self.time = time
+    self.time = self.Setting.sche_step
     #初始智能体位置
     self.agent_init_position = agent_init_position
     #智能体的移动模型
@@ -31,73 +43,175 @@ class GridMovingContext():
     #预测模型及所需参数
     self.model = model
     self.alpha = alpha
-    self.sprinkeffect_all = sprinkeffect_all
-    self.allstate = allstate
-    self.agent_number = len(self.agent_init_position)
-    self.time_co = 0.0001
+    self.pollution_distribute = pollution_distribute
+    self.allpoint = allpoint
+    self.agent_number = self.agent_init_position.shape[0]
+    self.time_co = Setting.time_co
     
-    #智能体策略矩阵，包含每个智能体每个时间的动作，初始均设为中间值，存储的是动作序号
-    self.policy_matrix = np.ones((self.agent_number, time)).astype(np.int16) * (len(self.move_matrix) // 2)
-    
+    #智能体策略矩阵
+    # 定义初始动作，原地连续洒水，策略矩阵不再存放动作标号，而直接存放动作
+    self.policy_matrix = self.init_policy_matrix()
     #智能体轨迹，存放了包括初始轨迹在内，轨迹是一系列二维坐标
     self.curr_trace_set = self.calculate_trace_set()
-    
     #当前轨迹所覆盖矩阵
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
-    
     #可选动作长度
     self.possible_actions = len(self.move_matrix)
+  
+  def init_policy_matrix(self):
+    #初始策略矩阵，根据车辆的水量和补水速度计算
+    replenish_speed = self.Setting.replenish_speed
+    water_volume = self.Setting.water_volume
+    replenish_time = math.ceil(water_volume/replenish_speed)
+    round = math.ceil(self.time/(replenish_time + water_volume))
+    line = []
+    for i in range(round):
+      for j in range(water_volume):
+        line.append([0, 0, 1])
+        
+      for j in range(replenish_time):
+        line.append([0, 0, -1])
+    line = line[0:self.time]
+    line = np.array(line)
+    mid_line = np.ones((self.agent_number,line.shape[0],line.shape[1]))
+    for j in range(self.agent_number):
+      mid_line[j,:,:] = line
+    return mid_line
 
-  def CalculateSQ(self):
-      return self.calculate_objective_scores()
+  def CalculateSpraySQ(self):
+    return self.calculate_Spray_scores()
+  
+  def CalculateMISQ(self):
+    self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
+    return self.calculate_MI_scores(2)
 
-  def calculate_objective_scores(self, method = 1):
+  def calculate_Spray_scores(self):
+    # 这里的洒水计算未来需要变更,洒水为在当前时刻洒水，即洒完水再移动
     #calcullate spray effcet
     spray_effect = 0
     curr_trace_set = self.curr_trace_set.copy()
-    # sprinkeffect_all = self.sprinkeffect_all.copy()
-    normed_effect = (self.sprinkeffect_all - self.sprinkeffect_all.min()) / self.sprinkeffect_all.ptp()
-    sprinkeffect = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
-    for i in range (self.task_extent[0],self.task_extent[1]+1):
-      for j in range (self.task_extent[2],self.task_extent[3]+1):
-        sprinkeffect[i,j] = normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j]
+    pollution_distribute = self.pollution_distribute.copy()
         
-    spray_time = 0
-    for j in range(self.time + 1):
+    # spray_time = 0
+    for j in range(self.time):
       for i in range(self.agent_number):
-        if self.curr_trace_set[i, j, 2] == 1:
+        # if self.move_matrix[self.policy_matrix[i, j]][2] == 1:
+        if self.policy_matrix[i, j, 2] == 1:
           r0 = curr_trace_set[i, j, 0]
           c0 = curr_trace_set[i, j, 1]
-          spray_time = spray_time + 1
+
           for a in range(3):
             for b in range(3):
               r = int(r0 - 1 + a)
               c = int(c0 - 1 + b)
               if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
                 if a == 1 and b == 1:
-                  spray_effect = spray_effect + 0.3 * (1-0.9)**j * sprinkeffect[r,c]
-                  sprinkeffect[r,c] = (1 - 0.3 ) * sprinkeffect[r,c]
+                  spray_effect = spray_effect + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                  pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
                 else:
-                  spray_effect = spray_effect + 0.2 * (1-0.9)**j * sprinkeffect[r,c]
-                  sprinkeffect[r,c] = (1 - 0.2 ) * sprinkeffect[r,c]
+                  spray_effect = spray_effect + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
+                  pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
 
-    #calculate spray effect per spray time
-    spray_effect_arv = spray_effect / spray_time
+    return spray_effect
+  
+  def calculate_Sprayscores_foreveryvehicle(self):
+    #calcullate spray effcet
+    spray_effect = 0
+    curr_trace_set = self.curr_trace_set.copy()
+    pollution_distribute = self.pollution_distribute.copy()
+   
+    spray_time = np.zeros(self.agent_number)
+    spray_effect = np.zeros(self.agent_number)
+    spray_effect0 = 0
+    for j in range(5):
+      for i in range(self.agent_number):
+        if self.policy_matrix[i, j, 2] == 1:
+          r0 = curr_trace_set[i, j, 0]
+          c0 = curr_trace_set[i, j, 1]
+          spray_time[i] = spray_time[i] + 1
+          for a in range(3):
+            for b in range(3):
+              r = int(r0 - 1 + a)
+              c = int(c0 - 1 + b)
+              if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                if a == 1 and b == 1:
+                  spray_effect[i] = spray_effect[i] + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                  spray_effect0 = spray_effect0 + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                  pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
+                else:
+                  spray_effect[i] = spray_effect[i] + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
+                  spray_effect0 = spray_effect0 + 0.5*(0.9)**j *calculate_effect(pollution_distribute[r,c])
+                  pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
 
-    #calculate mi about select point for all points
+    for i in range(self.agent_number):
+      if spray_time[i] > 0:
+        spray_effect[i] = spray_effect[i] / spray_time[i] 
+    
+    return spray_effect0, spray_effect
+
+  def calculate_MI_scores(self, method = 2):
+    #calculate mi about selected point to all points at one time
     if method == 1:
-      #calculate mi at  one time point
+      #calculate mi at one time point
       curr_matrixB = self.curr_matrixB
-      allstate = self.allstate
-      self.model.add_data_x(curr_matrixB)
-      prior_diag_std, poste_diag_std, poste_cov, poste_cov = self.model.prior_poste(allstate)
-      mi = -1 * np.linalg.det(poste_cov)
-      print(mi)
-
-    return sprinkeffect, mi, spray_effect_arv
+      allpoint_list = []
+      for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
+          for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
+              allpoint_list.append([i, j, self.model.time_stamp])
+      allpoint = np.array(allpoint_list)
+      
+      processed_points = np.unique(curr_matrixB, axis=0)
+      train_data = self.model.get_data_x()
+      
+      nrows, ncols = train_data.shape
+      dtype={'names':['f{}'.format(i) for i in range(ncols)],
+          'formats':ncols * [train_data.dtype]}
+      mid_points = np.intersect1d(train_data.view(dtype), processed_points.view(dtype))
+      processed_points2 = np.setdiff1d(processed_points.view(dtype), mid_points)
+      processed_points2 = processed_points2.view(train_data.dtype).reshape(-1, ncols)
+      self.model.add_data_x(processed_points2)
+      _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint)
+      if processed_points2.shape[0] > 0:
+          self.model.reduce_data_x(processed_points2.shape[0])
+      # prior_entropy = gaussian_entropy_multivariate(prior_cov)
+      # poste_entropy = gaussian_entropy_multivariate(poste_cov)
+      # mi = prior_entropy - poste_entropy
+      mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
+      # print(mi)
+    elif method == 2:
+      #calculate mi at whole time period，all_state are about the whole time
+      curr_matrixC = self.curr_matrixC
+      allpoint = self.allpoint
+      processed_points = np.unique(curr_matrixC, axis=0)
+      # print(processed_points)
+      train_data = self.model.get_data_x()
+      
+      nrows, ncols = train_data.shape
+      dtype={'names':['f{}'.format(i) for i in range(ncols)],
+          'formats':ncols * [train_data.dtype]}
+      mid_points = np.intersect1d(train_data.view(dtype), processed_points.view(dtype))
+      processed_points2 = np.setdiff1d(processed_points.view(dtype), mid_points)
+      processed_points2 = processed_points2.view(train_data.dtype).reshape(-1, ncols)
+      self.model.add_data_x(processed_points2)
+      _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint)
+      if processed_points2.shape[0] > 0:
+          self.model.reduce_data_x(processed_points2.shape[0])
+      # prior_entropy = gaussian_entropy_multivariate(prior_cov)
+      # poste_entropy = gaussian_entropy_multivariate(poste_cov)
+      # mi = prior_entropy - poste_entropy
+      mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
+    return mi
+  
+  def calculate_wolume_scores(self):
+    spray_time = 0
+    for j in range(self.time):
+      for i in range(self.agent_number):
+        if self.policy_matrix[i, j, 2] == 1:
+          spray_time = spray_time + 1 * (0.95)**j
+    return spray_time
 
   def calculate_matrix(self):
-    #calculate three matrix, one for spray effect, onr for mi and one as before
+    #calculate three matrix, one for spray effect, one for mi and one as before
     #first as before
     matrixA =  np.zeros(self.map_shape)
     for i in range(self.agent_number):
@@ -108,7 +222,7 @@ class GridMovingContext():
         y = self.curr_trace_set[i, j, 0:2][1].astype(np.int16)
         matrixA[x, y] += 1
           
-    #third matrix for mi calculate at one times
+    #second matrix for mi calculate at one times
     num = 0
     matrixB = np.zeros(((self.time+1)*self.agent_number,3))
     for x in range(self.map_shape[0]):
@@ -120,12 +234,14 @@ class GridMovingContext():
           num = num + 1
     matrixB = matrixB[0:num]
     
-    #fourth matrix for mi calculate at different times
+    #third matrix for mi calculate at different times
     num = 0
     matrixC = np.zeros(((self.time+1)*self.agent_number,3))
     mid = np.zeros((1,3))
     for j in range(self.time + 1):
       for i in range(self.agent_number):
+        if j == 0:
+          continue
         x = self.curr_trace_set[i, j, 0:2][0].astype(np.int16)
         y = self.curr_trace_set[i, j, 0:2][1].astype(np.int16)
         z = self.curr_trace_set[i, j, 3]
@@ -148,13 +264,25 @@ class GridMovingContext():
       for j in range(self.time + 1):
         if(j == 0):
           curr_trace_set[i, j, 0:2] = np.array(self.agent_init_position[i])
-          curr_trace_set[i, j, 2:3] = 0
-          curr_trace_set[i, j, 3:4] = self.model.time_stamp
+          curr_trace_set[i, j, 2:3] = self.Setting.water_volume
+          curr_trace_set[i, j, 3] = self.model.time_stamp
         else:
-          curr_trace_set[i, j, 0:2] = np.array(self.move_matrix[self.policy_matrix[i, j - 1, 0:1]]) + \
-                                             curr_trace_set[i, j - 1, 0:2]
-          curr_trace_set[i, j, 2:3] = np.array(self.move_matrix[self.policy_matrix[i, j - 1, 2:3]])
-          curr_trace_set[i, j, 3:4] = self.model.time_stamp + self.time_co * j
+          # curr_trace_set[i, j, 0:2] = np.array(self.move_matrix[self.policy_matrix[i, j - 1]][0:2]) + curr_trace_set[i, j - 1, 0:2]
+          curr_trace_set[i, j, 0:2] = np.array(self.policy_matrix[i, j - 1, 0:2]) + curr_trace_set[i, j - 1, 0:2]
+          # 洒水
+          # if self.move_matrix[self.policy_matrix[i, j - 1]] == 1:
+          if self.policy_matrix[i, j - 1, 2] == 1:
+            # curr_trace_set[i, j, 2] = curr_trace_set[i, j - 1, 2] - self.move_matrix[self.policy_matrix[i, j - 1]][2]
+            curr_trace_set[i, j, 2] = curr_trace_set[i, j - 1, 2] - self.policy_matrix[i, j - 1, 2]
+          # 补水
+          elif self.policy_matrix[i, j - 1, 2] == -1:
+            curr_trace_set[i, j, 2] = curr_trace_set[i, j - 1, 2] - self.policy_matrix[i, j - 1, 2] * self.Setting.replenish_speed
+            if curr_trace_set[i, j, 2] >= self.Setting.water_volume:
+              curr_trace_set[i, j, 2] = self.Setting.water_volume
+          # 其他
+          else:
+            curr_trace_set[i, j, 2] = curr_trace_set[i, j - 1, 2]
+          curr_trace_set[i, j, 3] = self.model.time_stamp + self.time_co * j
           
     return curr_trace_set
 
@@ -163,6 +291,30 @@ class GridMovingContext():
 
   def GetMaxTime(self) -> int:
     return self.time
+  
+  def GetSprayTime(self,agent_number) -> int:
+    num = 0
+    for i in range(self.time):
+      if self.policy_matrix[agent_number, i, 2] == 1:
+        num = num + 1
+    return num
+  
+  def GetDontSprayTime(self,agent_number) -> int:
+    num = 0
+    for i in range(self.time):
+      if self.policy_matrix[agent_number, i, 2] == 0:
+        num = num + 1
+    return num
+  
+  def GetCurrentInfo(self):
+    allpoint_list = []
+    for i in range(self.map_shape[0]):
+      for j in range(self.map_shape[1]):
+        allpoint_list.append([i, j, self.model.time_stamp])
+    allpoint = np.array(allpoint_list)
+    _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint)
+    mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
+    return mi
 
   def GetPossibleActions(self) -> int:
     return self.possible_actions
@@ -178,12 +330,111 @@ class GridMovingContext():
 
   
   def CheckValid(self, agent_position_list):
-    if(np.max(agent_position_list <= -1) == True):
+    # 判断位置是否超限
+    if(np.max(agent_position_list[:, 0:2] <= -1) == True):
       return False
     if(np.max(agent_position_list[:, 0] >= self.map_shape[0]) == True):
       return False
     if(np.max(agent_position_list[:, 1] >= self.map_shape[1]) == True):
       return False
-    if(np.max(agent_position_list[:, 2] >= 10)):
+    # 判断洒水是否超限
+    if(np.max(agent_position_list[:, 2] >= self.Setting.water_volume + 1) == True):
       return False
+    if(np.max(agent_position_list[:, 2] <= -1) == True):
+      return False 
     return True
+  
+  def adaptive_update(self, model, pollution_distribute, allstate, Setting):
+    # 初始智能体位置
+    for i in range(self.agent_init_position.shape[0]):
+      self.agent_init_position[i] = self.curr_trace_set[i,self.Setting.adaptive_step, 0:2]
+
+    # 预测模型及所需参数
+    if Setting.current_step > Setting.max_num_samples - Setting.sche_step:
+      if Setting.max_num_samples - Setting.current_step > 5:
+        self.Setting.sche_step = Setting.max_num_samples - Setting.current_step
+      else:
+        self.Setting.sche_step = 5
+    else:
+      self.Setting.sche_step = Setting.sche_step
+      
+    self.model = model
+    self.pollution_distribute = pollution_distribute
+    self.allstate = allstate
+    
+    # 智能体策略矩阵,更新策略矩阵
+    for i in range(self.time - self.Setting.adaptive_step):
+      self.policy_matrix[:,i,:] = self.policy_matrix[:,i+self.Setting.adaptive_step,:]
+      self.curr_trace_set[:,i,:] = self.curr_trace_set[:,i+self.Setting.adaptive_step,:] 
+    self.curr_trace_set[:,self.time - self.Setting.adaptive_step,:] =  self.curr_trace_set[:,self.time,:]
+    
+    # 根据现在的长度更新
+    residue_length = self.time - self.Setting.adaptive_step
+    self.time = self.Setting.sche_step
+    self.policy_matrix = self.policy_matrix[:,0:self.time,:]
+    self.curr_trace_set = self.curr_trace_set[:,0:(self.time+1),:]
+    adaptive_step = self.time - residue_length
+    
+    # 补充策略矩阵中缺失的部分
+    for i in range(adaptive_step):
+      for j in range(self.agent_number):
+        if self.curr_trace_set[j,self.time - adaptive_step + i, 2] >= 1 and self.policy_matrix[j,self.time - adaptive_step - 1 + i, 2] != -1:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = 1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] = self.curr_trace_set[j,self.time - adaptive_step + i, 2] - 1
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co
+        elif self.curr_trace_set[j,self.time - adaptive_step + i, 2] < 1:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = -1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] \
+            = self.curr_trace_set[j,self.time - adaptive_step + i, 2] + self.Setting.replenish_speed
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co
+        elif self.curr_trace_set[j,self.time - adaptive_step + i, 2] >= self.Setting.water_volume:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = 1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] = self.curr_trace_set[j,self.time - adaptive_step + i, 2] - 1
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - self.Setting.adaptive_step + i, 3] + self.time_co
+        elif self.curr_trace_set[j,self.time - adaptive_step + i, 2] < self.Setting.water_volume \
+          and self.policy_matrix[j,self.time - adaptive_step - 1 + i, 2] == -1:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = -1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] \
+            = self.curr_trace_set[j,self.time - adaptive_step + i, 2] + self.Setting.replenish_speed
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co
+    
+    #当前轨迹所覆盖矩阵
+    self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
+
+
+  # def init_policy_matrix(self):
+  #   #初始策略矩阵，根据车辆的水量和补水速度计算
+  #   replenish_speed = self.Setting.replenish_speed
+  #   water_volume = self.Setting.water_volume
+  #   replenish_time = math.ceil(water_volume/replenish_speed)
+  #   round = math.ceil(self.time/(replenish_time + water_volume))
+  #   line = []
+  #   for i in range(round):
+  #     for j in range(water_volume):
+  #       line.append(len(self.move_matrix) // 2 + 1)
+        
+  #     for j in range(replenish_time):
+  #       line.append(len(self.move_matrix) // 2 - 1)
+  #   line = line[0:self.time].astype(np.int16)
+  #   line = np.array(line)
+  #   mid_line = line
+  #   for j in range(self.agent_number):
+  #     mid_line = np.vstack((mid_line,line))
+  #   return mid_line
+  

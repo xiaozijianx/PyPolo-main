@@ -94,13 +94,13 @@ class Sprinkler(ISensor):
                     c2 = x_spray[:,1] - 1 + b
                     c1 = int(c1)
                     c2 = int(c2)
-                    if c1 < extent[0] or c1 > extent[1] or c2 < extent[2] or c2 > extent[3]:
+                    if c1 < extent[0] or c1 >= extent[1] or c2 < extent[2] or c2 >= extent[3]:
                         continue
                     elif a == 1 and b ==1:
-                        env[c1,c2] = 0.7*env[c1,c2]
-                        effect = effect + 0.3*env[c1,c2]
-                    else:
-                        env[c1,c2] = 0.8*env[c1,c2]
                         effect = effect + 0.2*env[c1,c2]
+                        env[c1,c2] = 0.8*env[c1,c2]
+                    else:
+                        effect = effect + 0.15*env[c1,c2]
+                        env[c1,c2] = 0.85*env[c1,c2]
         self.env = env.copy()
         return env, effect

@@ -29,7 +29,7 @@ class VEHICLE(IRobot):
         self.max_lin_vel = 1.0
         self.movements = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)]
         self.goal_spray_flag = []
-        self.spray_flag = True
+        self.spray_flag = False
         self.water_volume = water_volume
         self.water_volume_now = water_volume
         self.Water_replenishment_period = 2
@@ -97,6 +97,20 @@ class VEHICLE(IRobot):
                 self.water_volume_now = self.water_volume
                 self.Water_replenishment_flag = False
                 self.Water_replenishment_period = 2
+        
+            #update goal state
+            self.goal_states = self.goal_states[1:]
+            self.goal_spray_flag = self.goal_spray_flag[1:]
+        
+    def update_withoutreplenishment(self) -> None:
+        """
+        Update state, and goal states.
+
+        """
+        if self.has_goal:
+            # Update state
+            self.state = self.goal_states[0]
+            self.spray_flag = self.goal_spray_flag[0]
         
             #update goal state
             self.goal_states = self.goal_states[1:]

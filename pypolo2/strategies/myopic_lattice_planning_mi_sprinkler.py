@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from ..objectives.entropy import gaussian_entropy
-from ..objectives.sprinkeffect import sprink_effect
+from ..objectives.sprayeffect import spray_effect
 from ..models import IModel
 from .strategy import IStrategy
 from ..robots import IRobot
@@ -83,14 +83,14 @@ class MyopicLatticePlanningMISprinkler(IStrategy):
             print(mi.ravel())
             raise ValueError("Predictive MI < 0.0!")
         
-        #second sprinkler effect
+        #second spray effect
         allstate_list = []
         for i in range (self.task_extent[0],self.task_extent[1]+1):
             for j in range (self.task_extent[2],self.task_extent[3]+1):
                 allstate_list.append([i, j, model.time_stamp])
         allstate = np.array(allstate_list)
         mean, _ = model(allstate)
-        sprinkeffect = sprink_effect(model_input,allstate,mean,self.task_extent).ravel()
+        sprayeffect = spray_effect(model_input,allstate,mean,self.task_extent).ravel()
         
         #third compute mi of all points
         prior_diag_std, poste_diag_std, poste_cov, poste_cov = model.prior_poste(allstate)
@@ -100,11 +100,11 @@ class MyopicLatticePlanningMISprinkler(IStrategy):
         if np.any(mi_all < 0.0):
             print(mi_all.ravel())
             raise ValueError("Predictive MI < 0.0!")
-        sprinkeffect_all = sprink_effect(allstate,allstate,mean,self.task_extent).ravel()
+        sprayeffect_all = spray_effect(allstate,allstate,mean,self.task_extent).ravel()
         
         # Normalized scores
         normed_mi = (mi - mi.min()) / mi.ptp()
-        normed_effect = (sprinkeffect - sprinkeffect.min()) / sprinkeffect.ptp()
+        normed_effect = (sprayeffect - sprayeffect.min()) / sprayeffect.ptp()
         if Strategy == "MI_myopic":
             scores = normed_mi
         elif Strategy == "Effect_myopic":
@@ -118,4 +118,4 @@ class MyopicLatticePlanningMISprinkler(IStrategy):
         spray_flag = True
         
         
-        return goal_states,spray_flag,mi_all,mean,sprinkeffect_all
+        return goal_states,spray_flag,mi_all,mean,sprayeffect_all

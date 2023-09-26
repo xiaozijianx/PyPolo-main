@@ -4,7 +4,7 @@ from pathlib import Path
 from urllib import request
 from skimage import transform
 from matplotlib import pyplot as plt
-from .visualizer import create_colorbar_ax, OOMFormatter, order_of_magnitude
+# from .visualizer import create_colorbar_ax, OOMFormatter, order_of_magnitude
 import pde
 import pandas as pd
 

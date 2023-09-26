@@ -1,86 +1,93 @@
 from pathlib import Path
 import numpy as np
-
+import pickle
+import os
+from ..experiments.utilities import makefile
 
 class Logger:
     """Save all the variables for visualization."""
-    def __init__(self, eval_outputs: np.ndarray) -> None:
-        """
+    def __init__(self, args = None, Setting = None) -> None:
+        if args != None:
+            self.save_data = {'info': {'gridx': args.grid_x,
+                                       'gridy': args.grid_y,
+                                       'time_co':args.time_co,
+                                       'delta_t':args.delta_t,
+                                       'strategy_name':args.strategy_name,
+                                       'env_type':args.Env,
+                                       'effect_threshold':args.effect_threshold,
+                                       'team_size':args.team_size,
+                                       'sche_step':args.sche_step,
+                                       'adaptive_step':args.adaptive_step,
+                                       'random_seed':args.seed}, 
+                              'time_series': dict(), 
+                              'truth_env': [],
+                              'observed_env': [],
+                              'MI_information': [],
+                              'computed_effect': [],
+                              'mean_airpollution': [],
+                              'max_airpollution': [], 
+                              'coverage':[],
+                              'spray_effect':[],
+                              'runtime': 0.0}
+            self.save_dir = args.save_dir
+            os.makedirs(args.save_dir, exist_ok=True)
+            # self.save_name = f'E{args.env}_D{args.dimension}_FS{args.fire_size}_FN{args.fire_num}_U{args.update_interval}_T{args.horizon}_C{args.communication}_N{args.num_robot}_I{args.image_size}_S{args.suppress_size}_M{args.measure_correct:.2f}_A{args.alpha:.2f}_B{args.beta:.2f}'
+            self.save_name = args.save_name
+        else:
+            self.save_data = {'info': {'gridx': Setting.grid_x,
+                                       'gridy': Setting.grid_y,
+                                       'time_co':Setting.time_co,
+                                       'delta_t':Setting.delta_t,
+                                       'strategy_name':Setting.strategy_name,
+                                       'env_type':Setting.Env,
+                                       'effect_threshold':Setting.effect_threshold,
+                                       'team_size':Setting.team_size,
+                                       'sche_step':Setting.sche_step,
+                                       'adaptive_step':Setting.adaptive_step,
+                                       'random_seed':Setting.seed}, 
+                              'time_series': dict(), #区分不同agent的数据存放在这里
+                              'truth_env': [],
+                              'observed_env': [],
+                              'MI_information': [],
+                              'computed_effect': [],
+                              'mean_airpollution': [],
+                              'max_airpollution': [], 
+                              'coverage':[],
+                              'spray_effect':[],
+                              'runtime': 0.0}
+            self.save_dir = Setting.save_dir
+            os.makedirs(Setting.save_dir, exist_ok=True)
+            # self.save_name = f'E{args.env}_D{args.dimension}_FS{args.fire_size}_FN{args.fire_num}_U{args.update_interval}_T{args.horizon}_C{args.communication}_N{args.num_robot}_I{args.image_size}_S{args.suppress_size}_M{args.measure_correct:.2f}_A{args.alpha:.2f}_B{args.beta:.2f}'
+            self.save_name = Setting.save_name
+            
+    def append(self, t, env, observed_env, MI_information, computed_effect, team, coverage, mean_airpollution, max_airpollution, spray_effect):
+        self.save_data['time_series'][t] = {
+            'state': {id: robot.state for id,robot in team.items()},
+            'water_volume': {id: robot.water_volume_now for id,robot in team.items()}
+        }
+        self.save_data['truth_env'].append(env)
+        self.save_data['observed_env'].append(observed_env)
+        self.save_data['MI_information'].append(MI_information)
+        self.save_data['computed_effect'].append(computed_effect)
+        self.save_data['coverage'].append(coverage)
+        self.save_data['spray_effect'].append(spray_effect)
+        self.save_data['mean_airpollution'].append(mean_airpollution)
+        self.save_data['max_airpollution'].append(max_airpollution)
 
-        Parameters
-        ----------
-        eval_outpus: np.ndarray, shape=(num_x * num_y, 1)
-            Outputs for evaluation.
+    def append_weight(self, t, info_weights, suppress_weights):
+        self.save_data['time_series'][t]['info_weights'] = info_weights
+        self.save_data['time_series'][t]['suppress_weights'] = suppress_weights
 
-        """
-        self.eval_outputs = eval_outputs
-        self.means = []
-        self.stds = []
-        self.errors = []
-        self.xs = []
-        self.ys = []
-        self.nums = []
-        self.goals = []
+    def append_confweight(self, t, conf_weights):
+        self.save_data['time_series'][t]['conf_weights'] = conf_weights
 
-    def append(
-        self,
-        mean: np.ndarray,
-        std: np.ndarray,
-        error: np.ndarray,
-        x: np.ndarray,
-        y: np.ndarray,
-        num: int,
-    ):
-        """Append the given data.
+    def save(self, runtime) -> None:
+        self.save_dir = makefile(f'{self.save_dir}/{self.save_name}')
+        # self.save_dir = f'{self.save_dir}/{self.save_name}.pkl'
+        self.save_data['save_name'] = self.save_name
+        self.save_data['runtime'] = runtime
+        with open(f"{self.save_dir}", 'wb') as handle:
+            pickle.dump(self.save_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        Parameters
-        ----------
-        mean: np.ndarray, shape=(num_samples,)
-            Predictive mean vector.
-        std: np.ndarray, shape=(num_samples,)
-            Predictive standard deviation vector.
-        error: np.ndarray, shape=(num_samples,)
-            Absolute error vector.
-        x: np.ndarray, shape=(num_samples, num_dims)
-            Training inputs.
-        y: np.ndarray, shape=(num_samples,)
-            Training outputs.
-        num: int
-            Number of training data.
-
-        """
-        self.means.append(mean)
-        self.stds.append(std)
-        self.errors.append(error)
-        self.xs.append(x)
-        self.ys.append(y)
-        self.nums.append(num)
-
-    def save(self, save_dir: str) -> None:
-        """
-
-        Parameters
-        ----------
-        save_dir: str
-            Directory to save.
-
-        """
-        Path(save_dir).mkdir(parents=True, exist_ok=True)
-
-        means = np.hstack(self.means)
-        stds = np.hstack(self.stds)
-        errors = np.hstack(self.errors)
-        xs = np.vstack(self.xs)
-        ys = np.vstack(self.ys)
-        nums = np.array(self.nums)
-        np.savez_compressed(
-            f"{save_dir}/log.npz",
-            eval_outputs=self.eval_outputs,
-            means=means,
-            stds=stds,
-            errors=errors,
-            xs=xs,
-            ys=ys,
-            nums=nums,
-        )
-        print(f"Saved log.npz to {save_dir}")
+        print()
+        print(f"Saved log.json to {self.save_dir}")

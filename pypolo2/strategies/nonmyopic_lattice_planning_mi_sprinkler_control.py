@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from ..objectives.entropy import gaussian_entropy
-from ..objectives.sprinkeffect import sprink_effect
+from ..objectives.sprayeffect import spray_effect
 from ..models import IModel
 from .strategy import IStrategy
 from ..robots import IRobot
@@ -12,7 +12,9 @@ import networkx as nx
 
 
 class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
-    """Myopic informative planning based on Mutual informaiton on latttice map."""
+    """Myopic informative planning based on Mutual informaiton on latttice map.
+    考虑了选择性洒水，信息量不变，局部搜索算法
+    """
 
     def __init__(
         self,
@@ -112,9 +114,9 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
                 allstate_list.append([i, j, model.time_stamp])
         allstate = np.array(allstate_list)
         
-        #compute predict mean and sprink_effect of all point
+        #compute predict mean and spray_effect of all point
         mean, _ = model(allstate)
-        sprinkeffect_all = sprink_effect(allstate,allstate,mean,self.task_extent).ravel()
+        sprayeffect_all = spray_effect(allstate,allstate,mean,self.task_extent).ravel()
         
         #compute mi of all points
         prior_diag_std, poste_diag_std, poste_cov, poste_cov = model.prior_poste(allstate)
@@ -127,33 +129,33 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
         
         result_mean = mean.copy()
         result_mi_all = mi_all.copy()
-        result_sprinkeffect_all = sprinkeffect_all.copy()
+        result_sprayeffect_all = sprayeffect_all.copy()
         result = dict()
         
         for id, vehicle in self.vehicle_team.items():
             # Normalized scores
             # normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
             normed_mi = (mi_all.max() - mi_all) / mi_all.ptp()
-            normed_effect = (sprinkeffect_all - sprinkeffect_all.min()) / sprinkeffect_all.ptp()
+            normed_effect = (sprayeffect_all - sprayeffect_all.min()) / sprayeffect_all.ptp()
             
             # normed_mi = mi_all / np.sum(mi_all)
-            # normed_effect = sprinkeffect_all / np.sum(sprinkeffect_all)
+            # normed_effect = sprayeffect_all / np.sum(sprayeffect_all)
             
             #trans to matrix form
             mi = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
-            sprinkeffect = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
+            sprayeffect = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
             
-            #set threshold that sprinkeffect under this threshold means don't spray
+            #set threshold that sprayeffect under this threshold means don't spray
             threshold = Setting.threshold
             for i in range (self.task_extent[0],self.task_extent[1]+1):
                 for j in range (self.task_extent[2],self.task_extent[3]+1):
                     mi[i,j] = normed_mi[i*(self.task_extent[3]+1-self.task_extent[2])+j]
-                    if sprinkeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j] > threshold:
-                        sprinkeffect[i,j] = normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j]
+                    # if sprayeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j] > threshold:
+                    sprayeffect[i,j] = normed_effect[i*(self.task_extent[3]+1-self.task_extent[2])+j]
                         
-            scores = Setting.alpha*mi + (1-Setting.alpha)*sprinkeffect
-
-            path = self.greedy_search_multi_step(8,scores,id)[1:]
+            scores = Setting.alpha*mi + (1-Setting.alpha)*sprayeffect
+            # scores = sprayeffect
+            path = self.greedy_search_multi_step(Setting.sche_step,scores,id)[1:]
 
             goal_states = np.zeros((len(path),2))
             spray_flag = np.ones((len(path),1), dtype=bool)
@@ -164,9 +166,10 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
                 goal_states[index,0] = location[0]
                 goal_states[index,1] = location[1]
                 #find point under threshold
-                if sprinkeffect[location[0],location[1]] == 0:
+                if sprayeffect[location[0],location[1]] < threshold:
                     spray_flag[index,0] = False
             
+            # print(goal_states,spray_flag)
             result[id] = (goal_states,spray_flag)
             
             #reduce effect
@@ -181,11 +184,11 @@ class NonMyopicLatticePlanningMISprinklerControl(IStrategy):
                             if m == 1 and n == 1:
                                 mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(0.9**i*2)*mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
                                 if spray_flag[i,0] == True:
-                                    sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(1-(0.9**i*0.3))*sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
+                                    sprayeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(1-(0.9**i*0.3))*sprayeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
                             if spray_flag[i,0] == True:
-                                sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(1-(0.9**i*0.2))*sprinkeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
+                                sprayeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(1-(0.9**i*0.2))*sprayeffect_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
                             mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]=(0.9**i*1.5)*mi_all[int(r*(self.task_extent[3]+1-self.task_extent[2])+c)]
                 
-        return result, result_mi_all, result_mean, result_sprinkeffect_all
+        return result, result_mi_all, result_mean, result_sprayeffect_all
     
    

@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from ..objectives.entropy import gaussian_entropy, gaussian_entropy_multivariate
-from ..objectives.sprinkeffect import sprink_effect
+from ..objectives.sprayeffect import spray_effect
 from ..models import IModel
 from .strategy import IStrategy
 from ..robots import IRobot
@@ -13,7 +13,9 @@ import sys
 
 
 class TimeTraversalLatticePlanningMISprinklerControl(IStrategy):
-    """Myopic informative planning based on Mutual informaiton on latttice map."""
+    """Myopic informative planning based on Mutual informaiton on latttice map.
+    遍历算法，在计算信息量时，将搜索选择的点集合放在一个时间平面内，计算整体的信息量
+    """
 
     def __init__(
         self,
@@ -35,7 +37,7 @@ class TimeTraversalLatticePlanningMISprinklerControl(IStrategy):
         super().__init__(task_extent, rng)
         self.vehicle_team = vehicle_team
         
-    def greedy_search_multi_step(self, length, alpha, sprinkeffect_all, model):
+    def greedy_search_multi_step(self, length, alpha, sprayeffect_all, model):
         """Get goal states for sampling.
 
         Parameters
@@ -67,12 +69,12 @@ class TimeTraversalLatticePlanningMISprinklerControl(IStrategy):
         
         #trans to matrix form
         sprayeffect = np.zeros((self.task_extent[1]+1-self.task_extent[0],self.task_extent[3]+1-self.task_extent[2]))
-        #set threshold that sprinkeffect under this threshold means don't spray
+        #set threshold that sprayeffect under this threshold means don't spray
         threshold = 15
         for i in range (self.task_extent[0],self.task_extent[1]+1):
             for j in range (self.task_extent[2],self.task_extent[3]+1):
-                if sprinkeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j] > threshold:
-                    sprayeffect[i,j] = sprinkeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j]
+                if sprayeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j] > threshold:
+                    sprayeffect[i,j] = sprayeffect_all[i*(self.task_extent[3]+1-self.task_extent[2])+j]
         
         for id, vehicle in self.vehicle_team.items():
             position = (int(vehicle.state[0]),int(vehicle.state[1]))
@@ -118,8 +120,8 @@ class TimeTraversalLatticePlanningMISprinklerControl(IStrategy):
                     
                     #calculate mi
                     #Removing duplicate points
-                    processed_points = np.unique(select_points[1:], axis=0)
-                    train_data = model.get_data_x()
+                    processed_points = np.unique(select_points[1:], axis=0).astype(np.float32)
+                    train_data = model.get_data_x().astype(np.float32)
                     
                     nrows, ncols = train_data.shape
                     dtype={'names':['f{}'.format(i) for i in range(ncols)],
@@ -229,9 +231,9 @@ class TimeTraversalLatticePlanningMISprinklerControl(IStrategy):
                 allstate_list.append([i, j, model.time_stamp])
         allstate = np.array(allstate_list)
         
-        #compute predict mean and sprink_effect of all point
+        #compute predict mean and spray_effect of all point
         mean, _ = model(allstate)
-        sprinkeffect_all = sprink_effect(allstate,allstate,mean,self.task_extent).ravel()
+        sprayeffect_all = spray_effect(allstate,allstate,mean,self.task_extent).ravel()
         
         #compute mi of all points
         prior_diag_std, poste_diag_std, poste_cov, poste_cov = model.prior_poste(allstate)
@@ -246,10 +248,10 @@ class TimeTraversalLatticePlanningMISprinklerControl(IStrategy):
         
         result_mean = mean.copy()
         result_mi_all = mi_all.copy()
-        result_sprinkeffect_all = sprinkeffect_all.copy()
+        result_sprayeffect_all = sprayeffect_all.copy()
         
-        result = self.greedy_search_multi_step(step_number, alpha, sprinkeffect_all, model)
+        result = self.greedy_search_multi_step(step_number, alpha, sprayeffect_all, model)
    
-        return result, result_mi_all, result_mean, result_sprinkeffect_all
+        return result, result_mi_all, result_mean, result_sprayeffect_all
     
    

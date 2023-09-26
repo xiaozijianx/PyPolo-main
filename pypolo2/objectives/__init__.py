@@ -1,4 +1,4 @@
 from . import entropy
-from . import sprinkeffect
+from . import sprayeffect
 
-__all__ = ["entropy","sprinkeffect"]
+__all__ = ["entropy", "sprayeffect"]

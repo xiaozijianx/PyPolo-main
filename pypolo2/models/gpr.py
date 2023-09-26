@@ -211,6 +211,7 @@ class GPR(IModel):
             std = self.y_scaler.postprocess_std(std)
         return mean, std
 
+# 和prior_poste的不同是将computecommon中的部分拿了出来
     def prior_poste2(self, x_test: np.ndarray):
         # Pre-processing
         if self.is_normalized:
