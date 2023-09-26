@@ -14,9 +14,6 @@ class Config:
                  team_size = 5, water_volume=6, replenish_speed = 2,
                  max_num_samples = 40, current_step = 0 ,bound = 30, alpha = 1.5,
                  Strategy_Name = "SA_OnlyonetimeMI_simpleeffect",
-                 #"forestfire_Without_Operation",
-                 # forestfire_Nonmyopic_Adaptive_Operation
-                 # forestfire_Nonmyopic_Adaptive_Sensing_Operation
                  sche_step = 20, adaptive_step = 2, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
         
