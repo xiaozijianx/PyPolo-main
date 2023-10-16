@@ -85,7 +85,7 @@ class DiffusionPDE_withR(pde.PDEBase):
         state_lapacian = state.laplace(bc=self.bc)
         state_gradient = state.gradient(bc=self.bc)
         return (self.diffusivity * state_lapacian
-                + self.R - self.S)
+                + self.R - self.S - 0.02*state)
 
     def sprayer(self, I):
         data_sprayer_train = self.data_sprayer_train

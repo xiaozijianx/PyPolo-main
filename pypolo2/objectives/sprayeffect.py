@@ -50,11 +50,13 @@ def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,e
                     if a == 1 and b == 1:
                         if row_index.size > 0:
                             effect = effect + calculate_effect(mean[row_index[0]])
+                            # effect = effect + 0.2*mean[row_index[0]]
                         else:
                             raise ValueError
                     else:
                         if row_index.size > 0:
                             effect = effect + 0.5 * calculate_effect(mean[row_index[0]])
+                            # effect = effect + 0.15*mean[row_index[0]]
                         else:
                             raise ValueError
         spray_effect_list.append(effect)      

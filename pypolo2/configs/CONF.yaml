@@ -1,0 +1,46 @@
+strategy_name: "SA_time_non_uniform"
+save_dir: './outputs'
+verbose: True
+seed: 0
+
+# 气体扩散相关参数
+diffusivity_K: 1.2
+grid_x: 20
+grid_y: 20
+
+# 污染源相关参数
+randomsource: True
+sourcenum: 4
+R_change_interval: 40
+
+#time parameter
+time_co: 0.1 #高斯过程回归，时间步长
+delta_t: 2 #环境演化时间步长 10 min
+
+
+#sensing parameter
+sensing_rate: 1.0
+noise_scale: 1.0
+
+# experiment parameter
+num_init_samples: 1
+max_num_samples: 40
+sche_step: 18
+adaptive_step: 2
+Env: 'Dynamic'
+effect_threshold: 0.0
+
+#调度前数据时长
+time_before_sche: 5
+
+# 核参数
+amplitude: 1.0
+lengthscale: 0.5
+init_noise: 1.0
+lr_hyper: 0.01
+lr_nn: 0.001
+
+# vehicle team
+team_size: 5
+replenish_speed: 2
+water_volume: 6

@@ -13,7 +13,8 @@ from .nonmyopic_lattice_planning_mi_sprinkler_control_mifix import NonMyopicLatt
 from .traversal_lattice_planning_mi_sprinkler_control import TraversalLatticePlanningMISprinklerControl
 from .time_traversal_lattice_planning_mi_sprinkler_control import TimeTraversalLatticePlanningMISprinklerControl
 from .traversal_lattice_planning_mi_sprinkler_control_selecttoall import TraversalLatticePlanningMISprinklerControlSelecttoALL
-from .SA_lattice_planning_mi_sprinkler_control import SALatticePlanningMISprinklerControl
+from .SA_lattice_planning_mi_sprinkler_control_mimethod2 import SALatticePlanningMISprinklerControl_mimethod2
+from .SA_lattice_planning_mi_sprinkler_control_mimethod3 import SALatticePlanningMISprinklerControl_mimethod3
 from .strategy import IStrategy
 
 __all__ = [
@@ -24,14 +25,15 @@ __all__ = [
     "MyopicLatticePlanning"
     "RandomSampling",
     "MyopicPlanningMI",
-    "MyopicLatticePlanningMI"
-    "MyopicLatticePlanningMISprinkler"
-    "NonMyopicLatticePlanningMISprinkler"
-    "NonMyopicLatticePlanningMISprinklerControl"
-    "NonMyopicLatticePlanningMISprinklerControlFix"
-    "TraversalLatticePlanningMISprinklerControl"
-    "TraversalLatticePlanningMISprinklerControlSelecttoALL"
-    "TimeTraversalLatticePlanningMISprinklerControl"
-    "SALatticePlanningMISprinklerControl"
+    "MyopicLatticePlanningMI",
+    "MyopicLatticePlanningMISprinkler",
+    "NonMyopicLatticePlanningMISprinkler",
+    "NonMyopicLatticePlanningMISprinklerControl",
+    "NonMyopicLatticePlanningMISprinklerControlFix",
+    "TraversalLatticePlanningMISprinklerControl",
+    "TraversalLatticePlanningMISprinklerControlSelecttoALL",
+    "TimeTraversalLatticePlanningMISprinklerControl",
+    "SALatticePlanningMISprinklerControl_mimethod2",
+    "SALatticePlanningMISprinklerControl_mimethod3",
     "IStrategy",
 ]

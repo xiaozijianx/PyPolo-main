@@ -1,131 +1,104 @@
 import configargparse
+import yaml
+import sys
 
-
-def parse_arguments(verbose=True):
+def parse_arguments(verbose=False):
     parser = configargparse.ArgParser()
     parser.add_argument("--config",
                         required=False,
                         is_config_file=True,
+                        default='./configs/CONF.yaml',
                         help="Configuration file path.")
     # Experiment settings
-    parser.add_argument("--seed", type=int, default=0, help="Random seed.")
-    parser.add_argument("--env-name",
+    parser.add_argument("--strategy_name",
                         type=str,
-                        required=True,
-                        help="Environment name.")
-    parser.add_argument("--strategy",
-                        type=str,
-                        required=True,
+                        # required=True,
+                        default="SA_time_non_uniform",
                         help="Sampling strategy.")
-    parser.add_argument("--postfix",
-                        type=str,
-                        default="",
-                        help="Postfix of the experiment.")
-    parser.add_argument("--sensing-rate",
+    parser.add_argument("--seed", type=int, default=0, help="Random seed.")
+    parser.add_argument("--verbose",
+                        type=bool,
+                        default=False,
+                        help="Printing details.")
+    parser.add_argument("--diffusivity_K",
                         type=float,
-                        help="Sensing data update rate.")
-    parser.add_argument("--env-extent",
-                        type=float,
-                        action="append",
-                        help="Extent of the environment.")
-    parser.add_argument("--task-extent",
-                        type=float,
-                        action="append",
-                        help="Extent of the sampling task.")
-    parser.add_argument("--eval-grid",
+                        default=1.2,
+                        help="diffusivity coefficient")
+    parser.add_argument("--grid_x",
                         type=int,
-                        action="append",
-                        help="Evaluation grid size [num_x, num_y].")
-    parser.add_argument("--noise-scale",
-                        type=float,
-                        default=1,
-                        help="Observational noise scale.")
-    parser.add_argument("--num-init-samples",
+                        default=20,
+                        help="x_range")
+    parser.add_argument("--grid_y",
                         type=int,
-                        default=50,
-                        help="Number of initial samples.")
-    parser.add_argument("--max-num-samples",
+                        default=20,
+                        help="y_range")
+    parser.add_argument("--randomsource",
+                        type=bool,
+                        default=True,
+                        help="whether randomsource")
+    parser.add_argument("--sourcenum",
                         type=int,
-                        default=600,
-                        help="Maximum number of collected samples.")
-    parser.add_argument("--output-dir",
-                        type=str,
-                        default="./outputs/",
-                        help="Directory for outputs.")
-    parser.add_argument("--figure-dir",
-                        type=str,
-                        default="./figures/",
-                        help="Directory for figures.")
-    parser.add_argument("--num-candidates",
+                        default=4,
+                        help="number of random pollution source")
+    parser.add_argument("--R_change_interval",
                         type=int,
-                        default=1000,
-                        help="Number of candidate states in strategies.")
-    parser.add_argument("--control-rate",
-                        type=float,
-                        default=10.0,
-                        help="Control update rate.")
-    parser.add_argument("--max-lin-vel",
-                        type=float,
-                        default=1.0,
-                        help="Maximum linear velocity.")
-    parser.add_argument("--tolerance",
+                        default=40,
+                        help="time interval of random pollution source change")
+    parser.add_argument("--time_co",
                         type=float,
                         default=0.1,
-                        help="Localization error tolerance.")
-    parser.add_argument("--num-train-iter",
+                        help="time step of gaussian process")
+    parser.add_argument("--delta_t",
+                        type=float,
+                        default=2.0,
+                        help="interval of environment change")
+    parser.add_argument("--num_init_samples",
                         type=int,
-                        default=1000,
-                        help="Number of training iterations.")
-    # Kernel settings
-    parser.add_argument("--kernel",
-                        type=str,
-                        required=True,
-                        help="Kernel name.")
-    parser.add_argument("--init-amplitude",
-                        type=float,
-                        default=1.0,
-                        help="Initial amplitude hyper-parameter.")
-    parser.add_argument("--init-lengthscale",
-                        type=float,
-                        default=0.5,
-                        help="Initial amplitude hyper-parameter.")
-    parser.add_argument("--init-noise",
-                        type=float,
-                        default=1.0,
-                        help="Initial noise variance hyper-parameter.")
-    parser.add_argument("--lr-hyper",
-                        type=float,
-                        default=0.01,
-                        help="Learning rate for hyper-parameters.")
-    parser.add_argument("--lr-nn",
-                        type=float,
-                        default=0.001,
-                        help="Learning rate for neural-network parameters.")
-    parser.add_argument("--dim-input",
+                        default=1,
+                        help="range of init samples")
+    parser.add_argument("--max_num_samples",
+                        type=int,
+                        default=40,
+                        help="total schedule period")
+    parser.add_argument("--sche_step",
+                        type=int,
+                        default=18,
+                        help="max schedule steps")
+    parser.add_argument("--adaptive_step",
                         type=int,
                         default=2,
-                        help="Number of input dimensions of neural networks")
-    parser.add_argument("--dim-hidden",
+                        help="adaptive steps")
+    parser.add_argument("--Env",
+                        type=bool,
+                        default=True,
+                        help="dynamic environment.")
+    parser.add_argument("--team_size",
                         type=int,
-                        default=10,
-                        help="Number of hidden dimensions of neural networks")
-    parser.add_argument("--dim-output",
+                        default=5,
+                        help="vehicle size")
+    parser.add_argument("--replenish_speed",
                         type=int,
-                        default=10,
-                        help="Number of output dimensions of neural networks")
-    parser.add_argument("--min-lengthscale",
-                        type=float,
-                        default=0.01,
-                        help="Min primitive lengthscale of AK")
-    parser.add_argument("--max-lengthscale",
-                        type=float,
-                        default=0.5,
-                        help="Max primitive lengthscale of AK")
-    parser.add_argument("--jitter",
-                        type=float,
-                        default=1e-6,
-                        help="Small positive value for numerical stability.")
+                        default=2,
+                        help="replenish speed per time step")
+    parser.add_argument("--water_volume",
+                        type=int,
+                        default=6,
+                        help="water volume of one vehicle")
+    parser.add_argument('--alpha', type=list, default=[0.75,0.9,1.01,1.05,1.5], required=False, help='object weight.')
+    parser.add_argument("--save_dir",
+                        type=str,
+                        default="./output/",
+                        help="Directory for logs.")
     args = parser.parse_args()
-    if verbose:
+
+    if args.verbose:
         print(parser.format_values())
+        
+    if sys.platform == 'linux':
+        print("当前系统是Linux")
+    elif sys.platform == 'win32':
+        print("当前系统是Windows")
+    
+    args.save_name = f'SEED_{args.seed}_X{args.grid_x}_Y{args.grid_y}_VS{args.team_size}_TS{args.max_num_samples}_SS{args.sche_step}_AS{args.adaptive_step}_SN{args.sourcenum}_RS{args.replenish_speed}_WV{args.water_volume}'
+        
     return args

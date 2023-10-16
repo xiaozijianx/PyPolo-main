@@ -26,10 +26,10 @@ class GridMovingContext():
     #参数
     self.Setting = Setting
     if Setting.current_step > Setting.max_num_samples - Setting.sche_step:
-      if Setting.max_num_samples - Setting.current_step > 5:
+      if Setting.max_num_samples - Setting.current_step > 7:
         self.Setting.sche_step = Setting.max_num_samples - Setting.current_step
       else:
-        self.Setting.sche_step = 5
+        self.Setting.sche_step = 8
     else:
       self.Setting.sche_step = Setting.sche_step
     #作业区域
@@ -47,6 +47,7 @@ class GridMovingContext():
     self.allpoint = allpoint
     self.agent_number = self.agent_init_position.shape[0]
     self.time_co = Setting.time_co
+    self.last_info = 0.5
     
     #智能体策略矩阵
     # 定义初始动作，原地连续洒水，策略矩阵不再存放动作标号，而直接存放动作
@@ -57,6 +58,27 @@ class GridMovingContext():
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
     #可选动作长度
     self.possible_actions = len(self.move_matrix)
+    
+    #计算时刻已观测点对当前层各点的信息量
+    # self.MIforeverypoint
+    allpoint_list = []
+    for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
+        for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
+            allpoint_list.append([i, j, self.model.time_stamp])
+    point = np.array(allpoint_list)
+    prior_diag_std, poste_diag_std, _, _ = self.model.prior_poste(point)
+    hprior = gaussian_entropy(prior_diag_std.ravel())
+    hposterior = gaussian_entropy(poste_diag_std.ravel())
+    mi_all = hprior - hposterior
+    if np.any(mi_all < 0.0):
+        print(mi_all.ravel())
+        raise ValueError("Predictive MI < 0.0!")
+    normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
+    MI_information = np.zeros((self.Setting.task_extent[1]-self.Setting.task_extent[0],self.Setting.task_extent[3]-self.Setting.task_extent[2]))
+    for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
+        for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
+            MI_information[i,j] = normed_mi[i*(self.Setting.task_extent[3]-self.Setting.task_extent[2])+j]
+    self.MIforeverypoint = MI_information
   
   def init_policy_matrix(self):
     #初始策略矩阵，根据车辆的水量和补水速度计算
@@ -85,69 +107,140 @@ class GridMovingContext():
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
     return self.calculate_MI_scores(2)
 
-  def calculate_Spray_scores(self):
-    # 这里的洒水计算未来需要变更,洒水为在当前时刻洒水，即洒完水再移动
-    #calcullate spray effcet
-    spray_effect = 0
-    curr_trace_set = self.curr_trace_set.copy()
-    pollution_distribute = self.pollution_distribute.copy()
-        
-    # spray_time = 0
-    for j in range(self.time):
-      for i in range(self.agent_number):
-        # if self.move_matrix[self.policy_matrix[i, j]][2] == 1:
-        if self.policy_matrix[i, j, 2] == 1:
-          r0 = curr_trace_set[i, j, 0]
-          c0 = curr_trace_set[i, j, 1]
+  def calculate_Spray_scores(self, method = 2):
+    if method == 1:
+      #calcullate spray effcet
+      spray_effect = 0
+      curr_trace_set = self.curr_trace_set.copy()
+      pollution_distribute = self.pollution_distribute.copy()
+          
+      # spray_time = 0
+      for j in range(self.time):
+        for i in range(self.agent_number):
+          # if self.move_matrix[self.policy_matrix[i, j]][2] == 1:
+          if self.policy_matrix[i, j, 2] == 1:
+            r0 = curr_trace_set[i, j, 0]
+            c0 = curr_trace_set[i, j, 1]
 
-          for a in range(3):
-            for b in range(3):
-              r = int(r0 - 1 + a)
-              c = int(c0 - 1 + b)
-              if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
-                if a == 1 and b == 1:
-                  spray_effect = spray_effect + (0.9)**j*calculate_effect(pollution_distribute[r,c])
-                  pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
-                else:
-                  spray_effect = spray_effect + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
-                  pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
+            for a in range(3):
+              for b in range(3):
+                r = int(r0 - 1 + a)
+                c = int(c0 - 1 + b)
+                if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                  if a == 1 and b == 1:
+                    spray_effect = spray_effect + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + (0.9)**j*0.2*pollution_distribute[r,c]
+                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.2*pollution_distribute[r,c]
+                  else:
+                    spray_effect = spray_effect + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + (0.9)**j*0.15*pollution_distribute[r,c]
+                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.15*pollution_distribute[r,c]
+      return spray_effect
+    elif method == 2:
+      # 计算洒水收益时，不仅需要考虑时间衰减，还需要考虑确定性权重
+      #calcullate spray effcet
+      spray_effect = 0
+      curr_trace_set = self.curr_trace_set.copy()
+      pollution_distribute = self.pollution_distribute.copy()
+          
+      # spray_time = 0
+      for j in range(self.time):
+        for i in range(self.agent_number):
+          # if self.move_matrix[self.policy_matrix[i, j]][2] == 1:
+          if self.policy_matrix[i, j, 2] == 1:
+            r0 = curr_trace_set[i, j, 0]
+            c0 = curr_trace_set[i, j, 1]
 
-    return spray_effect
+            for a in range(3):
+              for b in range(3):
+                r = int(r0 - 1 + a)
+                c = int(c0 - 1 + b)
+                if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                  if a == 1 and b == 1:
+                    spray_effect = spray_effect + (0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + (0.9)**j*0.2*pollution_distribute[r,c]
+                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.2*pollution_distribute[r,c]
+                  else:
+                    spray_effect = spray_effect + 0.5*(0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + (0.9)**j*0.15*pollution_distribute[r,c]
+                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.15*pollution_distribute[r,c]
+      return spray_effect
   
-  def calculate_Sprayscores_foreveryvehicle(self):
-    #calcullate spray effcet
-    spray_effect = 0
-    curr_trace_set = self.curr_trace_set.copy()
-    pollution_distribute = self.pollution_distribute.copy()
-   
-    spray_time = np.zeros(self.agent_number)
-    spray_effect = np.zeros(self.agent_number)
-    spray_effect0 = 0
-    for j in range(5):
-      for i in range(self.agent_number):
-        if self.policy_matrix[i, j, 2] == 1:
-          r0 = curr_trace_set[i, j, 0]
-          c0 = curr_trace_set[i, j, 1]
-          spray_time[i] = spray_time[i] + 1
-          for a in range(3):
-            for b in range(3):
-              r = int(r0 - 1 + a)
-              c = int(c0 - 1 + b)
-              if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
-                if a == 1 and b == 1:
-                  spray_effect[i] = spray_effect[i] + (0.9)**j*calculate_effect(pollution_distribute[r,c])
-                  spray_effect0 = spray_effect0 + (0.9)**j*calculate_effect(pollution_distribute[r,c])
-                  pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
-                else:
-                  spray_effect[i] = spray_effect[i] + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
-                  spray_effect0 = spray_effect0 + 0.5*(0.9)**j *calculate_effect(pollution_distribute[r,c])
-                  pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
-
-    for i in range(self.agent_number):
-      if spray_time[i] > 0:
-        spray_effect[i] = spray_effect[i] / spray_time[i] 
+  def calculate_Sprayscores_foreveryvehicle(self,method = 2):
+    if method == 1:
+      #calcullate spray effcet
+      spray_effect = 0
+      curr_trace_set = self.curr_trace_set.copy()
+      pollution_distribute = self.pollution_distribute.copy()
     
-    return spray_effect0, spray_effect
+      spray_time = np.zeros(self.agent_number)
+      spray_effect = np.zeros(self.agent_number)
+      spray_effect0 = 0
+      for j in range(8):
+        for i in range(self.agent_number):
+          if self.policy_matrix[i, j, 2] == 1:
+            r0 = curr_trace_set[i, j, 0]
+            c0 = curr_trace_set[i, j, 1]
+            spray_time[i] = spray_time[i] + 1
+            for a in range(3):
+              for b in range(3):
+                r = int(r0 - 1 + a)
+                c = int(c0 - 1 + b)
+                if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                  if a == 1 and b == 1:
+                    spray_effect[i] = spray_effect[i] + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect0 = spray_effect0 + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
+                    # spray_effect[i] = spray_effect[i] + (0.9)**j*0.2*pollution_distribute[r,c]
+                    # spray_effect0 = spray_effect0 + (0.9)**j*0.2*pollution_distribute[r,c]
+                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.2*pollution_distribute[r,c]
+                  else:
+                    spray_effect[i] = spray_effect[i] + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect0 = spray_effect0 + 0.5*(0.9)**j *calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect[i] = spray_effect[i] + 0.5*(0.9)**j*0.15*pollution_distribute[r,c]
+                    # spray_effect0 = spray_effect0 + 0.5*(0.9)**j *0.15*pollution_distribute[r,c]
+                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.15*pollution_distribute[r,c]
+      for i in range(self.agent_number):
+        if spray_time[i] > 0:
+          spray_effect[i] = spray_effect[i] / spray_time[i] 
+      return spray_effect0, spray_effect
+    elif method == 2:
+      #calcullate spray effcet
+      spray_effect = 0
+      curr_trace_set = self.curr_trace_set.copy()
+      pollution_distribute = self.pollution_distribute.copy()
+    
+      spray_time = np.zeros(self.agent_number)
+      spray_effect = np.zeros(self.agent_number)
+      spray_effect0 = 0
+      for j in range(8):
+        for i in range(self.agent_number):
+          if self.policy_matrix[i, j, 2] == 1:
+            r0 = curr_trace_set[i, j, 0]
+            c0 = curr_trace_set[i, j, 1]
+            spray_time[i] = spray_time[i] + 1
+            for a in range(3):
+              for b in range(3):
+                r = int(r0 - 1 + a)
+                c = int(c0 - 1 + b)
+                if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                  if a == 1 and b == 1:
+                    spray_effect[i] = spray_effect[i] + (0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect0 = spray_effect0 + (0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
+                  else:
+                    spray_effect[i] = spray_effect[i] + 0.5*(0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect0 = spray_effect0 + 0.5*(0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j *calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
+      for i in range(self.agent_number):
+        if spray_time[i] > 0:
+          spray_effect[i] = spray_effect[i] / spray_time[i] 
+      return spray_effect0, spray_effect
 
   def calculate_MI_scores(self, method = 2):
     #calculate mi about selected point to all points at one time
@@ -200,6 +293,29 @@ class GridMovingContext():
       # poste_entropy = gaussian_entropy_multivariate(poste_cov)
       # mi = prior_entropy - poste_entropy
       mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
+    elif method == 3:
+      #calculate mi at whole time period，all_state are about the whole time
+      curr_matrixC = self.curr_matrixC
+      allpoint = self.allpoint
+      processed_points = np.unique(curr_matrixC, axis=0)
+      # print(processed_points)
+      train_data = self.model.get_data_x()
+      
+      nrows, ncols = train_data.shape
+      dtype={'names':['f{}'.format(i) for i in range(ncols)],
+          'formats':ncols * [train_data.dtype]}
+      mid_points = np.intersect1d(train_data.view(dtype), processed_points.view(dtype))
+      processed_points2 = np.setdiff1d(processed_points.view(dtype), mid_points)
+      processed_points2 = processed_points2.view(train_data.dtype).reshape(-1, ncols)
+      self.model.add_data_x(processed_points2)
+      num = 121
+      mi = 0
+      for i in range(np.ceil(self.Setting.sche_step/3)):
+        _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint[i*121:(i+1)*121])
+        if processed_points2.shape[0] > 0:
+            self.model.reduce_data_x(processed_points2.shape[0])
+        mi = mi + 0.9**i*(prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
+        
     return mi
   
   def calculate_wolume_scores(self):
@@ -327,8 +443,13 @@ class GridMovingContext():
 
   def GetMapShape(self):
     return self.map_shape
-
   
+  def GetLastInfo(self):
+    return self.last_info
+  
+  def UpdateInfo(self):
+    self.last_info = self.GetCurrentInfo()
+
   def CheckValid(self, agent_position_list):
     # 判断位置是否超限
     if(np.max(agent_position_list[:, 0:2] <= -1) == True):
@@ -344,23 +465,24 @@ class GridMovingContext():
       return False 
     return True
   
-  def adaptive_update(self, model, pollution_distribute, allstate, Setting):
+  def adaptive_update(self, model, pollution_distribute, allpoint, Setting):
     # 初始智能体位置
     for i in range(self.agent_init_position.shape[0]):
       self.agent_init_position[i] = self.curr_trace_set[i,self.Setting.adaptive_step, 0:2]
 
     # 预测模型及所需参数
+    self.Setting = Setting
     if Setting.current_step > Setting.max_num_samples - Setting.sche_step:
-      if Setting.max_num_samples - Setting.current_step > 5:
+      if Setting.max_num_samples - Setting.current_step > 7:
         self.Setting.sche_step = Setting.max_num_samples - Setting.current_step
       else:
-        self.Setting.sche_step = 5
+        self.Setting.sche_step = 8
     else:
       self.Setting.sche_step = Setting.sche_step
       
     self.model = model
     self.pollution_distribute = pollution_distribute
-    self.allstate = allstate
+    self.allpoint = allpoint
     
     # 智能体策略矩阵,更新策略矩阵
     for i in range(self.time - self.Setting.adaptive_step):
@@ -417,24 +539,24 @@ class GridMovingContext():
     #当前轨迹所覆盖矩阵
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
 
-
-  # def init_policy_matrix(self):
-  #   #初始策略矩阵，根据车辆的水量和补水速度计算
-  #   replenish_speed = self.Setting.replenish_speed
-  #   water_volume = self.Setting.water_volume
-  #   replenish_time = math.ceil(water_volume/replenish_speed)
-  #   round = math.ceil(self.time/(replenish_time + water_volume))
-  #   line = []
-  #   for i in range(round):
-  #     for j in range(water_volume):
-  #       line.append(len(self.move_matrix) // 2 + 1)
-        
-  #     for j in range(replenish_time):
-  #       line.append(len(self.move_matrix) // 2 - 1)
-  #   line = line[0:self.time].astype(np.int16)
-  #   line = np.array(line)
-  #   mid_line = line
-  #   for j in range(self.agent_number):
-  #     mid_line = np.vstack((mid_line,line))
-  #   return mid_line
-  
+    
+    #计算时刻已观测点对当前层各点的信息量
+    # self.MIforeverypoint
+    allpoint_list = []
+    for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
+        for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
+            allpoint_list.append([i, j, self.model.time_stamp])
+    point = np.array(allpoint_list)
+    prior_diag_std, poste_diag_std, _, _ = self.model.prior_poste(point)
+    hprior = gaussian_entropy(prior_diag_std.ravel())
+    hposterior = gaussian_entropy(poste_diag_std.ravel())
+    mi_all = hprior - hposterior
+    if np.any(mi_all < 0.0):
+        print(mi_all.ravel())
+        raise ValueError("Predictive MI < 0.0!")
+    normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
+    MI_information = np.zeros((self.Setting.task_extent[1]-self.Setting.task_extent[0],self.Setting.task_extent[3]-self.Setting.task_extent[2]))
+    for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
+        for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
+            MI_information[i,j] = normed_mi[i*(self.Setting.task_extent[3]-self.Setting.task_extent[2])+j]
+    self.MIforeverypoint = MI_information
