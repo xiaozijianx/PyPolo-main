@@ -1,4 +1,4 @@
-config='./configs/CONF.yaml'
+config='./pypolo2/configs/CONF.yaml'
 
 pids=()
 

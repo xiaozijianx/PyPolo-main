@@ -7,7 +7,7 @@ def parse_arguments(verbose=False):
     parser.add_argument("--config",
                         required=False,
                         is_config_file=True,
-                        default='./configs/CONF.yaml',
+                        default='./pypolo2/configs/CONF.yaml',
                         help="Configuration file path.")
     # Experiment settings
     parser.add_argument("--strategy_name",
@@ -52,6 +52,14 @@ def parse_arguments(verbose=False):
                         type=float,
                         default=2.0,
                         help="interval of environment change")
+    parser.add_argument("--sensing_rate",
+                        type=float,
+                        default=2.0,
+                        help="sensing_rate")
+    parser.add_argument("--noise_scale",
+                        type=float,
+                        default=2.0,
+                        help="noise_scale")
     parser.add_argument("--num_init_samples",
                         type=int,
                         default=1,
@@ -72,6 +80,34 @@ def parse_arguments(verbose=False):
                         type=bool,
                         default=True,
                         help="dynamic environment.")
+    parser.add_argument("--effect_threshold",
+                        type=float,
+                        default=0.0,
+                        help="naive effect_threshold")
+    parser.add_argument("--time_before_sche",
+                        type=int,
+                        default=5,
+                        help="time before sche")
+    parser.add_argument("--amplitude",
+                        type=float,
+                        default=1.0,
+                        help="kernal paremeter amplitude")
+    parser.add_argument("--lengthscale",
+                        type=float,
+                        default=0.5,
+                        help="kernal paremeter lengthscale")
+    parser.add_argument("--init_noise",
+                        type=float,
+                        default=1.0,
+                        help="kernal paremeter init_noise")
+    parser.add_argument("--lr_hyper",
+                        type=float,
+                        default=0.01,
+                        help="kernal paremeter lr_hyper")
+    parser.add_argument("--lr_nn",
+                        type=float,
+                        default=0.001,
+                        help="kernal paremeter lr_nn")
     parser.add_argument("--team_size",
                         type=int,
                         default=5,

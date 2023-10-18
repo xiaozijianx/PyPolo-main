@@ -8,7 +8,7 @@ import json
 from scipy import interpolate
 from scipy.stats import multivariate_normal
 
-f2 = open('Sprayer_PDE\info.json', 'r')
+f2 = open('Sprayer_PDE/info.json', 'r')
 info_data = json.load(f2)
 sprayer_model_mean = [0.0, 0.0]
 

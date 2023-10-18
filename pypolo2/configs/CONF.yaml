@@ -1,6 +1,6 @@
 strategy_name: "SA_time_non_uniform"
 save_dir: './outputs'
-verbose: True
+verbose: False
 seed: 0
 
 # 气体扩散相关参数

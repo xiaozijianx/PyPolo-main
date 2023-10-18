@@ -228,12 +228,12 @@ def main():
     Setting = pypolo2.utilities.Config(diffusivity_K = args.diffusivity_K, grid_x = args.grid_x, grid_y = args.grid_y, time_co = args.time_co, delta_t = args.delta_t,
                 sensing_rate = args.sensing_rate, noise_scale = args.noise_scale, num_init_samples = args.num_init_samples, seed = args.seed,
                 time_before_sche = args.time_before_sche, sourcenum = args.sourcenum, R_change_interval = args.R_change_interval,
-                init_amplitude = args.init_amplitude, init_lengthscale = args.init_lengthscale, init_noise = args.init_noise,
+                init_amplitude = args.amplitude, init_lengthscale = args.lengthscale, init_noise = args.init_noise,
                 lr_hyper = args.lr_hyper, lr_nn = args.lr_nn,
                 team_size = args.team_size, water_volume = args.water_volume, replenish_speed = args.replenish_speed,
                 max_num_samples = args.max_num_samples ,
                 alpha = args.alpha,
-                Strategy_Name = args.Strategy_Name,
+                Strategy_Name = args.strategy_name,
                 sche_step = args.sche_step, adaptive_step = args.adaptive_step, Env = args.Env,
                 effect_threshold = args.effect_threshold)
 
