@@ -1,4 +1,5 @@
 import configargparse
+import configparser
 import yaml
 import sys
 
@@ -9,6 +10,7 @@ def parse_arguments(verbose=False):
                         is_config_file=True,
                         default='./pypolo2/configs/CONF.yaml',
                         help="Configuration file path.")
+    
     # Experiment settings
     parser.add_argument("--strategy_name",
                         type=str,
@@ -66,7 +68,7 @@ def parse_arguments(verbose=False):
                         help="range of init samples")
     parser.add_argument("--max_num_samples",
                         type=int,
-                        default=40,
+                        default=30,
                         help="total schedule period")
     parser.add_argument("--sche_step",
                         type=int,

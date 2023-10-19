@@ -398,8 +398,8 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
   k = math.pow(0.00002, 1 / 10)
   context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = 10, object = 1)
   mi_high = context.CalculateMISQ()
-  print('mi_high')
-  print(mi_high)
+  # print('mi_high')
+  # print(mi_high)
   
   # 然后对5步洒水效果进行搜索
   single_playout = 50
@@ -407,8 +407,8 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
   k = math.pow(0.00002, 1 / 15)
   context, _ = SimulatedAnnealing(rng, origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = 15, object = 2)
   _, sprayeffect_after_everyvehicle = context.calculate_Sprayscores_foreveryvehicle()
-  print('sprayeffectarv')
-  print(sprayeffect_after_everyvehicle)
+  # print('sprayeffectarv')
+  # print(sprayeffect_after_everyvehicle)
   
   # 根据每个车辆的情况生成不同的alpha以及信息要求
   alpha_now = alpha
@@ -420,8 +420,8 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
   current_info = origin_context.GetCurrentInfo()
   origin_context.UpdateInfo()
   # print(origin_context.model.time_stamp)
-  print('CurrentInfo')
-  print(current_info)
+  # print('CurrentInfo')
+  # print(current_info)
   
   sorted_indices = np.argsort(sprayeffect_after_everyvehicle)[::-1]
   info_num1 = 0
@@ -451,16 +451,16 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
         enough_info[i] = False
         alpha_now = alpha[4]
     object_mi[i] = alpha_now * mi_high
-  print('object_mi')
-  print(object_mi)
-  print('enough_info')
-  print(enough_info)
+  # print('object_mi')
+  # print(object_mi)
+  # print('enough_info')
+  # print(enough_info)
   
   # 然后进行综合规划
   # single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
   single_playout = np.ceil(origin_context.GetAgentNumber()*20*np.exp(1/(origin_context.Setting.current_step//2+1.3)) - origin_context.GetAgentNumber()*2*20//5)
-  print('single_playout')
-  print(single_playout)
+  # print('single_playout')
+  # print(single_playout)
   Info_Temp = np.max((30 - origin_context.Setting.current_step * 10,8))
   Spray_Temp = 2500
   Temp = [Info_Temp,Spray_Temp]

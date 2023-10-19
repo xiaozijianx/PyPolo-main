@@ -293,28 +293,6 @@ class GridMovingContext():
       # poste_entropy = gaussian_entropy_multivariate(poste_cov)
       # mi = prior_entropy - poste_entropy
       mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
-    elif method == 3:
-      #calculate mi at whole time period，all_state are about the whole time
-      curr_matrixC = self.curr_matrixC
-      allpoint = self.allpoint
-      processed_points = np.unique(curr_matrixC, axis=0)
-      # print(processed_points)
-      train_data = self.model.get_data_x()
-      
-      nrows, ncols = train_data.shape
-      dtype={'names':['f{}'.format(i) for i in range(ncols)],
-          'formats':ncols * [train_data.dtype]}
-      mid_points = np.intersect1d(train_data.view(dtype), processed_points.view(dtype))
-      processed_points2 = np.setdiff1d(processed_points.view(dtype), mid_points)
-      processed_points2 = processed_points2.view(train_data.dtype).reshape(-1, ncols)
-      self.model.add_data_x(processed_points2)
-      num = 121
-      mi = 0
-      for i in range(np.ceil(self.Setting.sche_step/3)):
-        _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint[i*121:(i+1)*121])
-        if processed_points2.shape[0] > 0:
-            self.model.reduce_data_x(processed_points2.shape[0])
-        mi = mi + 0.9**i*(prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
         
     return mi
   
