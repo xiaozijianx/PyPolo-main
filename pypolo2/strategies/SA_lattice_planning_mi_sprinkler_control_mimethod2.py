@@ -256,21 +256,21 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
     # print(curr_turns)
     while(iters < n_playout):
       iters += 1
-      rand_category = rng.randint(0, 1)
-      rand_spray_category = rng.randint(0, 2)
-      rand_agent = rng.randint(0, curr_context.GetAgentNumber() - 1)
-      rand_time = rng.randint(0, curr_context.GetMaxTime() - 1)
+      rand_category = rng.randint(0, 2)
+      rand_spray_category = rng.randint(0, 3)
+      rand_agent = rng.randint(0, curr_context.GetAgentNumber())
+      rand_time = rng.randint(0, curr_context.GetMaxTime())
       SprayTime = curr_context.GetSprayTime(rand_agent)
       if SprayTime == 0:
         rand_time1 = 0
       else:
-        rand_time1 = rng.randint(0, SprayTime - 1)
+        rand_time1 = rng.randint(0, SprayTime)
       DontSprayTime = curr_context.GetDontSprayTime(rand_agent)
       if DontSprayTime == 0:
         rand_time2 = 0
       else:
-        rand_time2 = rng.randint(0, DontSprayTime - 1)
-      rand_action = rng.randint(0, curr_context.GetPossibleActions() - 1)
+        rand_time2 = rng.randint(0, DontSprayTime)
+      rand_action = rng.randint(0, curr_context.GetPossibleActions())
       agent_position_list = None
       New_policy = None
       if rand_category == 0:
