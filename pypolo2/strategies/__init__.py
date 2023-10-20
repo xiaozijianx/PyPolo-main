@@ -14,7 +14,9 @@ from .traversal_lattice_planning_mi_sprinkler_control import TraversalLatticePla
 from .time_traversal_lattice_planning_mi_sprinkler_control import TimeTraversalLatticePlanningMISprinklerControl
 from .traversal_lattice_planning_mi_sprinkler_control_selecttoall import TraversalLatticePlanningMISprinklerControlSelecttoALL
 from .SA_lattice_planning_mi_sprinkler_control_mimethod2 import SALatticePlanningMISprinklerControl_mimethod2
-from .SA_lattice_planning_mi_sprinkler_control_mimethod3 import SALatticePlanningMISprinklerControl_mimethod3
+from .SA_lattice_planning_sprinkler_control import SALatticePlanningSprinklerControl
+from .nonmyopic_lattice_planning_sprinkler import NonMyopicLatticePlanningSprinkler
+from .Sequential_spray import SequentialLatticePlanningSprinkler
 from .strategy import IStrategy
 
 __all__ = [
@@ -34,6 +36,8 @@ __all__ = [
     "TraversalLatticePlanningMISprinklerControlSelecttoALL",
     "TimeTraversalLatticePlanningMISprinklerControl",
     "SALatticePlanningMISprinklerControl_mimethod2",
-    "SALatticePlanningMISprinklerControl_mimethod3",
+    "SALatticePlanningSprinklerControl",
+    "NonMyopicLatticePlanningSprinkler",
+    "SequentialLatticePlanningSprinkler",
     "IStrategy",
 ]

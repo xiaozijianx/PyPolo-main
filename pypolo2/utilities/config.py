@@ -12,7 +12,7 @@ class Config:
                  init_amplitude = 1.0, init_lengthscale = 0.5, init_noise = 1.0,
                  lr_hyper = 0.01, lr_nn = 0.001,
                  team_size = 5, water_volume=6, replenish_speed = 2,
-                 max_num_samples = 40, current_step = 0 ,bound = 30, 
+                 max_num_samples = 40, current_step = 0 ,bound = 50, 
                  alpha = [0.75,0.9,0.99,1.05,1.5],
                  #[0.75,0.9,0.98,1.05,1.5],
                 #  [0.75,1.0,1.05,1.1,1.5] 0.2 0.2 0.15
@@ -22,7 +22,7 @@ class Config:
                 # [0.75,0.9,0.98,1.05,1.5] 0.2 0.2 0.15
                 # [0.75,0.9,1.0,1.05,1.5] 0.2 0.25 0.2
                  Strategy_Name = "SA_OnlyonetimeMI_simpleeffect",
-                 sche_step = 18, adaptive_step = 2, Env = "Dynamic",
+                 sche_step = 20, adaptive_step = 2, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
         
         # 实验数据选择,污染源数目选择,森林灭火拓展试验专用

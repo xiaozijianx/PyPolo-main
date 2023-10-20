@@ -256,21 +256,22 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
     # print(curr_turns)
     while(iters < n_playout):
       iters += 1
-      rand_category = rng.randint(0, 1)
-      rand_spray_category = rng.randint(0, 2)
-      rand_agent = rng.randint(0, curr_context.GetAgentNumber() - 1)
-      rand_time = rng.randint(0, curr_context.GetMaxTime() - 1)
+      rand_category = rng.randint(0, 2)
+      rand_spray_category = rng.randint(0, 3)
+      rand_agent = rng.randint(0, curr_context.GetAgentNumber())
+      print(rand_agent)
+      rand_time = rng.randint(0, curr_context.GetMaxTime())
       SprayTime = curr_context.GetSprayTime(rand_agent)
       if SprayTime == 0:
         rand_time1 = 0
       else:
-        rand_time1 = rng.randint(0, SprayTime - 1)
+        rand_time1 = rng.randint(0, SprayTime)
       DontSprayTime = curr_context.GetDontSprayTime(rand_agent)
       if DontSprayTime == 0:
         rand_time2 = 0
       else:
-        rand_time2 = rng.randint(0, DontSprayTime - 1)
-      rand_action = rng.randint(0, curr_context.GetPossibleActions() - 1)
+        rand_time2 = rng.randint(0, DontSprayTime)
+      rand_action = rng.randint(0, curr_context.GetPossibleActions())
       agent_position_list = None
       New_policy = None
       if rand_category == 0:
@@ -336,45 +337,15 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
       
       # 综合的接收情况，分别通过，洒水限制优先考虑
       elif object == 3:
-        MI_before = curr_context.CalculateMISQ()
-        MI_after = new_mc_context.CalculateMISQ()
-        spray_time_before = curr_context.calculate_wolume_scores()
-        spray_time_after = new_mc_context.calculate_wolume_scores()
-        
-        delta_MI = MI_after - MI_before
-        delta_spraytime = spray_time_after - spray_time_before
-        if enough_info[rand_agent] == False:
-          if delta_spraytime <= 0:
-            if rand_category == 0:
-              delta_MI = np.max((8-rand_time,1))*delta_MI
-            if(delta_MI >= 0):
-              curr_context = new_mc_context
-            else:
-              # accept by chance
-              accept_prob = np.exp(delta_MI / (curr_k * Temp[0]))
-              if(rng.random() < accept_prob):
-                curr_context = new_mc_context
-        else:
-          # if rand_category == 0:
-          #   delta_MI = np.max((2-rand_time,1))*delta_MI
-          if MI_after < object_mi[rand_agent]:
-            if delta_MI >= 0:
-              curr_context = new_mc_context
-            elif delta_MI < 0:
-              accept_prob = np.exp(delta_MI / (curr_k * Temp[0]))
-              if(rng.random() < accept_prob):
-                curr_context = new_mc_context
-            
-          elif MI_after >= object_mi[rand_agent]:
-            sprayeffect_before = curr_context.CalculateSpraySQ()
-            sprayeffect_after = new_mc_context.CalculateSpraySQ()
-            delta_sprayeffect = sprayeffect_after - sprayeffect_before
-            if delta_sprayeffect >= 0:
-              curr_context = new_mc_context
-            elif delta_sprayeffect < 0:
-              accept_prob = np.exp(delta_sprayeffect / (curr_k * Temp[1]))
-              if(rng.random() < accept_prob):
-                curr_context = new_mc_context
+        sprayeffect_before = curr_context.CalculateSpraySQ()
+        sprayeffect_after = new_mc_context.CalculateSpraySQ()
+        delta_sprayeffect = sprayeffect_after - sprayeffect_before
+        if delta_sprayeffect >= 0:
+          curr_context = new_mc_context
+        elif delta_sprayeffect < 0:
+          accept_prob = np.exp(delta_sprayeffect / (curr_k * Temp[1]))
+          if(rng.random() < accept_prob):
+            curr_context = new_mc_context
       
     sprayeffect_after = curr_context.CalculateSpraySQ()
     sprayeffect_after5step, _ = curr_context.calculate_Sprayscores_foreveryvehicle()
@@ -383,95 +354,37 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
   return curr_context, sq_list
 
 # @PrintExecutionTime
-def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha, beta):
-  # 设计一种双目标的规划算法，从思路上来讲，先对信息目标进行规划，初步计算出能够产生的信息量上下限，然后根据比例调节洒水规划中适用的信息目标
+def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha):
+  # 洒水车规划算法，假设环境已知，以洒水收益微单目标进行长周期多动作规划
   # 计算当前的分数并储存
   sprayeffect_before = origin_context.CalculateSpraySQ()
-  sprayeffect_before5step, _ = origin_context.calculate_Sprayscores_foreveryvehicle()
-  mi_low = origin_context.CalculateMISQ()
+  # sprayeffect_before5step, _ = origin_context.calculate_Sprayscores_foreveryvehicle()
+  # mi_low = origin_context.CalculateMISQ()
   sq_list_total = []
-  sq_list_total.append((sprayeffect_before, sprayeffect_before5step, mi_low))
+  # sq_list_total.append((sprayeffect_before, sprayeffect_before5step, mi_low))
+  sq_list_total.append((sprayeffect_before, 0, 0))
   
-  # 初步对信息目标进行计算
-  single_playout = 40
-  Temp = 30
-  k = math.pow(0.00002, 1 / 10)
-  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = 10, object = 1)
-  mi_high = context.CalculateMISQ()
-  # print('mi_high')
-  # print(mi_high)
-  
-  # 然后对5步洒水效果进行搜索
-  single_playout = 50
-  Temp = 2000
-  k = math.pow(0.00002, 1 / 15)
-  context, _ = SimulatedAnnealing(rng, origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = 15, object = 2)
-  _, sprayeffect_after_everyvehicle = context.calculate_Sprayscores_foreveryvehicle()
-  # print('sprayeffectarv')
-  # print(sprayeffect_after_everyvehicle)
-  
-  # 根据每个车辆的情况生成不同的alpha以及信息要求
-  alpha_now = alpha
-  object_mi = np.zeros(context.GetAgentNumber())
-  enough_info = np.zeros(context.GetAgentNumber(), dtype=bool)
-  
-  # 根据从大到小的顺序确定每个车辆的通过要求
-  last_info = origin_context.GetLastInfo()
-  current_info = origin_context.GetCurrentInfo()
-  origin_context.UpdateInfo()
-  # print(origin_context.model.time_stamp)
-  # print('CurrentInfo')
-  # print(current_info)
-  
-  sorted_indices = np.argsort(sprayeffect_after_everyvehicle)[::-1]
-  info_num1 = 0
-  info_num2 = 0
-  info_num3 = 0
-  for i in sorted_indices:
-    if sprayeffect_after_everyvehicle[i] > 150:
-      alpha_now = alpha[0]
-      enough_info[i] = True
-      info_num1 = info_num1 + 1
-      info_num2 = info_num2 + 1
-      info_num3 = info_num3 + 1
-    elif sprayeffect_after_everyvehicle[i] > 80:
-      alpha_now = alpha[1] - info_num1*(0.25 / context.GetAgentNumber())
-      enough_info[i] = True
-      info_num2 = info_num2 + 1
-      info_num3 = info_num3 + 1
-    elif sprayeffect_after_everyvehicle[i] > 10:
-      alpha_now = alpha[2] - info_num2*(0.2 / context.GetAgentNumber())
-      enough_info[i] = True
-      info_num3 = info_num3 + 1
-    else:
-      if (current_info-last_info)/last_info < 0.2:
-        enough_info[i] = True
-        alpha_now = alpha[3] - info_num3*(0.2 / context.GetAgentNumber())
-      else:
-        enough_info[i] = False
-        alpha_now = alpha[4]
-    object_mi[i] = alpha_now * mi_high
-  # print('object_mi')
-  # print(object_mi)
-  # print('enough_info')
-  # print(enough_info)
+  # 无信息目标要求
+  object_mi = np.zeros(origin_context.GetAgentNumber())
+  enough_info = np.ones(origin_context.GetAgentNumber(), dtype=bool)
   
   # 然后进行综合规划
-  # single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  single_playout = np.ceil(origin_context.GetAgentNumber()*20*np.exp(1/(origin_context.Setting.current_step//2+1.3)) - origin_context.GetAgentNumber()*2*20//5)
-  # print('single_playout')
-  # print(single_playout)
+  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
+  print('single_playout')
+  print(single_playout)
   Info_Temp = np.max((30 - origin_context.Setting.current_step * 10,8))
   Spray_Temp = 2500
   Temp = [Info_Temp,Spray_Temp]
   k = math.pow(0.00002, 1 / bound)
   # k = math.pow(0.0001, 1 / 10)
+  # print(object_mi)
   context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 3, object_mi = object_mi)
-
+  print(context.policy_matrix)
+  print(context.curr_trace_set)
   return context, sq_list_total + sq_list
 
 #定义SA算法包装
-class SALatticePlanningMISprinklerControl_mimethod2(IStrategy):
+class SALatticePlanningSprinklerControl(IStrategy):
     """Informative planning based on Mutual informaiton and sprinkler effect on latttice map use SA algorithms."""
 
     def __init__(
@@ -528,44 +441,12 @@ class SALatticePlanningMISprinklerControl_mimethod2(IStrategy):
         allpoint_list = []
         a = ((np.ceil((self.task_extent[1]-self.task_extent[0])/2)*2)-(self.task_extent[1]-self.task_extent[0]-1))/2
         b = ((np.ceil((self.task_extent[1]-self.task_extent[0])/3)*3)-(self.task_extent[1]-self.task_extent[0]-1))/2
-        # if sche_step <= 6:
-        #   for num in range(0,sche_step,1):
-        #     for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
-        #       for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):
-        #         allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
-        # el
-        if sche_step > 6 and sche_step < 10:
-          for num in range(0,3,1):
-            for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
-              for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):
-                allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
-          for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
-            for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):            
-              allpoint_list.append([i, j, model.time_stamp + (sche_step - 1) * Setting.time_co])
-        elif sche_step >= 10 and sche_step < 16:
-          for num in range(0,3,1):
-            for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
-              for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):
-                allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
-          for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
-              for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):      
-                allpoint_list.append([i, j, model.time_stamp + 9 * Setting.time_co])
-          for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
-              for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):      
-                allpoint_list.append([i, j, model.time_stamp + (sche_step - 1) * Setting.time_co])
-        elif sche_step >= 16:
-          for num in range(0,3,1):
-              for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
-                  for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):
-                      allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
-          for num in range(3,sche_step,6):
-              for i in np.arange (self.task_extent[0]-b,self.task_extent[1]+b,3):
-                  for j in np.arange (self.task_extent[2]-b,self.task_extent[3]+b,3):
-                      allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
-        allpoint = np.array(allpoint_list)
         
-        print('sche_step')
-        print(sche_step)
+        for num in range(0,sche_step,2):
+          for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
+            for j in np.arange (self.task_extent[2]-a,self.task_extent[3]+a,2):
+              allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
+        allpoint = np.array(allpoint_list)
         
         if self.moving_context is None:
           agent_init_position = []
@@ -576,19 +457,11 @@ class SALatticePlanningMISprinklerControl_mimethod2(IStrategy):
           self.alpha = Setting.alpha
         else:
           self.moving_context.adaptive_update(model, pred, allpoint, Setting)
-        beta = Setting.current_step * 0.3
-        self.moving_context, sq_list_total = SimulatedAnnealingFixed(self.rng, self.moving_context, Setting.bound, self.alpha, beta)
-        
-        # 检查效果
-        # print('policy_matrix')
-        # print(self.moving_context.policy_matrix)
-        # print('trace_set')
-        # print(self.moving_context.curr_trace_set)
+        self.moving_context, sq_list_total = SimulatedAnnealingFixed(self.rng, self.moving_context, Setting.bound, self.alpha)
         
         #context中包含最后的结果
         policy_now = self.moving_context.policy_matrix.copy()
         agent_position_list = self.moving_context.curr_trace_set.copy()
-        # sprayeffect, mi, spray_effect_arv = context.CalculateSQ()
                 
         result = dict()
 

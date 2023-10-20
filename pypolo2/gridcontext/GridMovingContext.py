@@ -46,6 +46,8 @@ class GridMovingContext():
     self.pollution_distribute = pollution_distribute
     self.allpoint = allpoint
     self.agent_number = self.agent_init_position.shape[0]
+    print("agent_number")
+    print(self.agent_number)
     self.time_co = Setting.time_co
     self.last_info = 0.5
     
@@ -107,7 +109,7 @@ class GridMovingContext():
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
     return self.calculate_MI_scores(2)
 
-  def calculate_Spray_scores(self, method = 2):
+  def calculate_Spray_scores(self, method = 1):
     if method == 1:
       #calcullate spray effcet
       spray_effect = 0
@@ -128,12 +130,12 @@ class GridMovingContext():
                 c = int(c0 - 1 + b)
                 if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
                   if a == 1 and b == 1:
-                    spray_effect = spray_effect + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect = spray_effect + (1.0)**j*calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
                     # spray_effect = spray_effect + (0.9)**j*0.2*pollution_distribute[r,c]
                     # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.2*pollution_distribute[r,c]
                   else:
-                    spray_effect = spray_effect + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect = spray_effect + 0.5*(1.0)**j*calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
                     # spray_effect = spray_effect + (0.9)**j*0.15*pollution_distribute[r,c]
                     # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.15*pollution_distribute[r,c]
@@ -170,7 +172,7 @@ class GridMovingContext():
                     # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.15*pollution_distribute[r,c]
       return spray_effect
   
-  def calculate_Sprayscores_foreveryvehicle(self,method = 2):
+  def calculate_Sprayscores_foreveryvehicle(self,method = 1):
     if method == 1:
       #calcullate spray effcet
       spray_effect = 0
