@@ -392,11 +392,11 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
   # 洒水车顺序规划算法，假设环境已知，以信息目标为通过标准计算
   # 计算当前的分数并储存
   sprayeffect_before = origin_context.CalculateSpraySQ()
-  # sprayeffect_before5step, _ = origin_context.calculate_Sprayscores_foreveryvehicle()
-  # mi_low = origin_context.CalculateMISQ()
+  sprayeffect_before5step, _ = origin_context.calculate_Sprayscores_foreveryvehicle()
+  mi_low = origin_context.CalculateMISQ()
   sq_list_total = []
-  # sq_list_total.append((sprayeffect_before, sprayeffect_before5step, mi_low))
-  sq_list_total.append((sprayeffect_before, 0, 0))
+  sq_list_total.append((sprayeffect_before, sprayeffect_before5step, mi_low))
+  # sq_list_total.append((sprayeffect_before, 0, 0))
 
   # 以信息目标为单一目标进行综合规划
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
@@ -404,8 +404,8 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
   Temp = 30
   k = math.pow(0.00002, 1 / bound)
   context, sq_list = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 1)
-  print(context.policy_matrix)
-  print(context.curr_trace_set)
+  # print(context.policy_matrix)
+  # print(context.curr_trace_set)
   return context, sq_list_total + sq_list
 
 #定义SA算法包装
@@ -452,10 +452,17 @@ class SequentialLatticePlanningSprinkler(IStrategy):
         print('current_turn')
         print((Setting.current_step + Setting.adaptive_step)/Setting.adaptive_step)
         
-        # 计算当前需要规划的步数
-        sche_step = 10
         Setting.sche_step = 10
-        
+        # 计算当前需要规划的步数
+        sche_step = 0
+        if Setting.current_step > Setting.max_num_samples - Setting.sche_step:
+          if Setting.max_num_samples - Setting.current_step > 7:
+            sche_step = Setting.max_num_samples - Setting.current_step
+          else:
+            sche_step = 8
+        else:
+          sche_step = Setting.sche_step
+          
         # 计算用于规划的目标集合 阶梯式的非均匀
         allpoint_list = []
         a = ((np.ceil((self.task_extent[1]-self.task_extent[0])/2)*2)-(self.task_extent[1]-self.task_extent[0]-1))/2

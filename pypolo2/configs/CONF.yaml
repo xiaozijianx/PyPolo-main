@@ -1,4 +1,4 @@
-strategy_name: "SA_time_non_uniform"
+strategy_name: "SequentialSpray"
 save_dir: './outputs'
 verbose: False
 seed: 0
@@ -9,7 +9,7 @@ grid_y: 20
 
 randomsource: True
 sourcenum: 4
-R_change_interval: 40
+R_change_interval: 18
 
 #time parameter
 time_co: 0.1 
@@ -21,7 +21,7 @@ noise_scale: 1.0
 
 # experiment parameter
 num_init_samples: 1
-max_num_samples: 30
+max_num_samples: 48
 sche_step: 18
 adaptive_step: 2
 Env: 'Dynamic'

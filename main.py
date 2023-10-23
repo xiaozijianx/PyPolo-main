@@ -18,11 +18,18 @@ def get_multi_robots(Setting):
 
 
 def get_strategy(rng, Setting, vehicle_team):
-    strategy = pypolo2.strategies.SALatticePlanningMISprinklerControl_mimethod2(
-            task_extent=Setting.task_extent,
-            rng=rng,
-            vehicle_team=vehicle_team,
-        )
+    if Setting.strategy_name == "PINNsOnlySpray":
+        strategy = pypolo2.strategies.SALatticePlanningSprinklerControl(
+                task_extent=Setting.task_extent,
+                rng=rng,
+                vehicle_team=vehicle_team,
+            )
+    elif Setting.strategy_name == "SequentialSpray":
+        strategy = pypolo2.strategies.SequentialLatticePlanningSprinkler(
+                task_extent=Setting.task_extent,
+                rng=rng,
+                vehicle_team=vehicle_team,
+            )
     return strategy
 
 
@@ -56,6 +63,8 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
     change_step = 0
     spray_effect = 0 # 洒水效果
     result, MI_information, observed_env, computed_effect = None, None, None, None
+    init_env = Setting.env
+    tstart = 0
     while current_step < Setting.max_num_samples:
         # 计算用于显示的信息量，目标估计，洒水效果
         allpoint_list = []
@@ -99,30 +108,40 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
            
         # change source,每经过R_change_interval后，改变源分布和强度，
         if change_step >= Setting.R_change_interval:
+            Setting.R =  -8 * np.ones((Setting.grid_x, Setting.grid_y)) + 16 * np.random.random((Setting.grid_x, Setting.grid_y))
             change_step = 0
             if Setting.randomsource == True:
                 # gengerate two set of random numbers for source locations
                 numbers = rng.randint(0, 19, size=Setting.sourcenum * 2)
                 pairs = rng.choice(numbers, size=(Setting.sourcenum, 2), replace=False)
                 for i in range(Setting.sourcenum):
-                    number = rng.randint(150, 300, size=1)
+                    number = rng.randint(150, 350, size=1)
                     Setting.RR[i,0] = int(pairs[i,0])
                     Setting.RR[i,1] = int(pairs[i,1])
                     Setting.RR[i,2] = number
+                init_env = Setting.env
+                tstart = current_step
 
         print(Setting.RR)
         #  每周期更新源信息,源是缓慢变化的，源会不断变强到顶峰，然后变弱。定义一个强度系数
         s = 1
-        if change_step == 0 or change_step == Setting.R_change_interval - 1:
-            s = 0.5
-        Setting.R =  -6 * np.ones((Setting.grid_x, Setting.grid_y)) + 13 * np.random.random((Setting.grid_x, Setting.grid_y))
+        # # if change_step == 0:
+        # #     s = 0.2
+        # if change_step == 0 or change_step == Setting.R_change_interval - 1:
+        #     s = 0.5
         for i in range(Setting.sourcenum):
              Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
              
+        #测试画图，源固定且不动
+        # Setting.R[3][3] = 300
+        # Setting.R[17][17] = 300
+        # Setting.R[3][17] = 300
+        # Setting.R[17][3] = 300
+             
         # 计算如果没有更新洒水时的环境变化
         env_model1 = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
-                 initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = Setting.current_step * Setting.delta_t) # build model
-        env_withoutspray = env_model1.solve(Setting.delta_t)
+                 initial_field =  init_env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = tstart) # build model
+        env_withoutspray = env_model1.solve((current_step + 1 - tstart) * Setting.delta_t)
         # update state 并将车辆的轨迹和洒水轨迹取出来
         x_new = []
         y_new = []
@@ -141,11 +160,12 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
                     Setting.data_sprayer_train[id-1] = pd.concat([Setting.data_sprayer_train[id-1],new_pd])
         # 计算带入洒水后的环境情况
         env_model2 = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
-                 initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = Setting.current_step * Setting.delta_t) # build model
-        Setting.env = env_model2.solve(Setting.delta_t)
+                 initial_field =  init_env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = tstart) # build model
+        Setting.env = env_model2.solve((current_step + 1 - tstart) * Setting.delta_t)
         sensor.set_env(Setting.env)
         # 计算洒水效果
         spray_effect = np.sum(env_withoutspray - Setting.env)
+        print(spray_effect)
             
         # using new data to update gpr model
         x_new = np.concatenate(x_new, axis=0)

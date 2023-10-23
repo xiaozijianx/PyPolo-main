@@ -257,9 +257,9 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
     while(iters < n_playout):
       iters += 1
       rand_category = rng.randint(0, 2)
+      # rand_category = 0
       rand_spray_category = rng.randint(0, 3)
       rand_agent = rng.randint(0, curr_context.GetAgentNumber())
-      print(rand_agent)
       rand_time = rng.randint(0, curr_context.GetMaxTime())
       SprayTime = curr_context.GetSprayTime(rand_agent)
       if SprayTime == 0:
@@ -335,7 +335,7 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
           if(rng.random() < accept_prob):
             curr_context = new_mc_context
       
-      # 综合的接收情况，分别通过，洒水限制优先考虑
+      # 无探索
       elif object == 3:
         sprayeffect_before = curr_context.CalculateSpraySQ()
         sprayeffect_after = new_mc_context.CalculateSpraySQ()
@@ -369,7 +369,7 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
   enough_info = np.ones(origin_context.GetAgentNumber(), dtype=bool)
   
   # 然后进行综合规划
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
+  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime() * 3
   print('single_playout')
   print(single_playout)
   Info_Temp = np.max((30 - origin_context.Setting.current_step * 10,8))
@@ -379,8 +379,8 @@ def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha
   # k = math.pow(0.0001, 1 / 10)
   # print(object_mi)
   context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 3, object_mi = object_mi)
-  print(context.policy_matrix)
-  print(context.curr_trace_set)
+  # print(context.policy_matrix)
+  # print(context.curr_trace_set)
   return context, sq_list_total + sq_list
 
 #定义SA算法包装

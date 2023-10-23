@@ -117,8 +117,9 @@ class GridMovingContext():
       pollution_distribute = self.pollution_distribute.copy()
           
       # spray_time = 0
-      for j in range(self.time):
-        for i in range(self.agent_number):
+      for i in range(self.agent_number):
+        for j in range(self.time):  
+        # for i in range(self.agent_number):
           # if self.move_matrix[self.policy_matrix[i, j]][2] == 1:
           if self.policy_matrix[i, j, 2] == 1:
             r0 = curr_trace_set[i, j, 0]
@@ -130,13 +131,16 @@ class GridMovingContext():
                 c = int(c0 - 1 + b)
                 if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
                   if a == 1 and b == 1:
-                    spray_effect = spray_effect + (1.0)**j*calculate_effect(pollution_distribute[r,c])
-                    pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + (0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect = spray_effect + 0.15*(20-j)*calculate_effect(pollution_distribute[r,c])
+                    # pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = 0.4*(pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c]))
                     # spray_effect = spray_effect + (0.9)**j*0.2*pollution_distribute[r,c]
                     # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.2*pollution_distribute[r,c]
                   else:
-                    spray_effect = spray_effect + 0.5*(1.0)**j*calculate_effect(pollution_distribute[r,c])
-                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
+                    spray_effect = spray_effect + 0.5*0.15*(20-j)*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = 0.8*(pollution_distribute[r,c] - 0.5*1.0*calculate_effect(pollution_distribute[r,c]))
                     # spray_effect = spray_effect + (0.9)**j*0.15*pollution_distribute[r,c]
                     # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.15*pollution_distribute[r,c]
       return spray_effect

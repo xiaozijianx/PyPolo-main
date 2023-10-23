@@ -3,15 +3,15 @@ import numpy as np
 
 def calculate_effect(pollution):
     if pollution<40:
-        return 0.0006 * pollution
+        return 0.0005 * pollution
     elif pollution<60:
-        return 0.02 * pollution
+        return 0.015 * pollution
     elif pollution<80:
         return 0.06 * pollution
     elif pollution<100:
-        return 0.2 * pollution
+        return 0.25 * pollution
     elif pollution<120:
-        return 0.3 * pollution
+        return 0.35 * pollution
     elif pollution>=120:
         return 0.4 * pollution
 
