@@ -245,7 +245,8 @@ def Set_initual_data(rng,Setting,sensor):
 def main():
     args = pypolo2.experiments.argparser.parse_arguments()
     
-    Setting = pypolo2.utilities.Config(diffusivity_K = args.diffusivity_K, grid_x = args.grid_x, grid_y = args.grid_y, time_co = args.time_co, delta_t = args.delta_t,
+    Setting = pypolo2.utilities.Config(root_dir = args.root_dir, save_name = args.save_name,
+                diffusivity_K = args.diffusivity_K, grid_x = args.grid_x, grid_y = args.grid_y, time_co = args.time_co, delta_t = args.delta_t,
                 sensing_rate = args.sensing_rate, noise_scale = args.noise_scale, num_init_samples = args.num_init_samples, seed = args.seed,
                 time_before_sche = args.time_before_sche, sourcenum = args.sourcenum, R_change_interval = args.R_change_interval,
                 init_amplitude = args.amplitude, init_lengthscale = args.lengthscale, init_noise = args.init_noise,
@@ -263,8 +264,8 @@ def main():
     
     # save directory
     # starttime = Setting.starttime.replace(' ', '-').replace(':', '-')
-    Setting.Savedir = '{}/{}/schestep_{}'.format(Setting.save_dir, Setting.strategy_name, Setting.sche_step)
-    Setting.save_name = args.save_name
+    Setting.save_dir = '{}/{}/teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.team_size)
+    # Setting.save_name = args.save_name
     evaluator = get_evaluator()
     logger = pypolo2.experiments.Logger(None, Setting)
     

@@ -1,5 +1,5 @@
 strategy_name: "SequentialSpray"
-save_dir: './outputs'
+root_dir: './outputs'
 verbose: False
 seed: 0
 

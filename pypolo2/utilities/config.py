@@ -5,7 +5,7 @@ import numpy as np
 
 class Config:
     """Configuring some parameters."""
-    def __init__(self, save_dir = "./outputs", save_name = "text", strategy = None, 
+    def __init__(self, root_dir = "./outputs", save_name = "text", strategy = None, 
                  diffusivity_K =1.2, grid_x = 20, grid_y = 20, time_co = 0.0001, delta_t = 0.01,
                  sensing_rate = 1.0, noise_scale = 1.0, num_init_samples = 1, seed = 0,
                  time_before_sche = 5, station_size = 1, sourcenum = 3, R_change_interval = 18,
@@ -29,7 +29,8 @@ class Config:
         self.starttime = '2018-11-23 08:00:00'
         
         # 文件存放目录及名称
-        self.save_dir = save_dir
+        self.root_dir = root_dir
+        self.save_dir = root_dir
         self.save_name = save_name
         
         # 气体扩散相关参数
