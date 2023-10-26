@@ -68,10 +68,13 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
     while current_step < Setting.max_num_samples:
         # 计算用于显示的信息量，目标估计，洒水效果
         allpoint_list = []
+        env_list = []
         for i in range (Setting.task_extent[0],Setting.task_extent[1]):
             for j in range (Setting.task_extent[2],Setting.task_extent[3]):
                 allpoint_list.append([i, j, model.time_stamp])
+                env_list.append(Setting.env[i,j])
         allpoint = np.array(allpoint_list)
+        env = np.array(env_list)
         mean, _ = model(allpoint)
         sprayeffect_all = pypolo2.objectives.sprayeffect.spray_effect(allpoint, allpoint, mean, Setting.task_extent).ravel()
         prior_diag_std, poste_diag_std, _, _ = model.prior_poste(allpoint)
@@ -81,13 +84,15 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
         if np.any(mi_all < 0.0):
             print(mi_all.ravel())
             raise ValueError("Predictive MI < 0.0!")
+        
+        sprayeffect_all = pypolo2.objectives.sprayeffect.spray_effect(allpoint, allpoint, env, Setting.task_extent).ravel()
         MI_information = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
         observed_env = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
         computed_effect = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
         for i in range (Setting.task_extent[0],Setting.task_extent[1]):
             for j in range (Setting.task_extent[2],Setting.task_extent[3]):
                 MI_information[i,j] = mi_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
-                observed_env[i,j] = mean[i*(Setting.task_extent[3]-Setting.task_extent[2])+j,0]
+                observed_env[i,j] = Setting.env[i,j]
                 computed_effect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
                 
         Setting.current_step = current_step
