@@ -3,17 +3,17 @@ root_dir: './outputs'
 verbose: False
 seed: 0
 
-diffusivity_K: 1.2
+diffusivity_K: 1.0
 grid_x: 20
 grid_y: 20
 
 randomsource: True
-sourcenum: 4
-R_change_interval: 18
+sourcenum: 3
+R_change_interval: 6
 
 #time parameter
 time_co: 0.1 
-delta_t: 2 
+delta_t: 3
 
 #sensing parameter
 sensing_rate: 1.0
@@ -37,5 +37,5 @@ lr_nn: 0.001
 
 # vehicle team
 team_size: 5
-replenish_speed: 2
-water_volume: 6
+replenish_speed: 1
+water_volume: 4

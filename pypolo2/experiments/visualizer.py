@@ -89,10 +89,10 @@ def visual(logger):
         im4.set_data(heatmap4)
         
         # Adjust the color range of the heatmap
-        im1.set_clim(vmin=0, vmax=180)
+        im1.set_clim(vmin=20, vmax=200)
         im2.set_clim(vmin=0, vmax=1.0)
         im3.set_clim(vmin=0, vmax=180)
-        im4.set_clim(vmin=0, vmax=180)
+        im4.set_clim(vmin=0, vmax=50)
         
         for id in range(logger.save_data['info']['team_size']):
             traj = arr[id+1]

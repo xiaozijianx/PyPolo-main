@@ -7,20 +7,13 @@ class Config:
     """Configuring some parameters."""
     def __init__(self, root_dir = "./outputs", save_name = "text", strategy = None, 
                  diffusivity_K =1.2, grid_x = 20, grid_y = 20, time_co = 0.0001, delta_t = 0.01,
-                 sensing_rate = 1.0, noise_scale = 1.0, num_init_samples = 1, seed = 0,
-                 time_before_sche = 5, station_size = 1, sourcenum = 3, R_change_interval = 18,
+                 sensing_rate = 1.0, noise_scale = 1.0, num_init_samples = 1, seed = 11,
+                 time_before_sche = 5, station_size = 1, sourcenum = 3, R_change_interval = 6,
                  init_amplitude = 1.0, init_lengthscale = 0.5, init_noise = 1.0,
                  lr_hyper = 0.01, lr_nn = 0.001,
-                 team_size = 4, water_volume=6, replenish_speed = 2,
-                 max_num_samples = 48, current_step = 0 ,bound = 30, 
+                 team_size = 5, water_volume=4, replenish_speed = 1,
+                 max_num_samples = 48, current_step = 0 ,bound = 20, 
                  alpha = [0.75,0.9,0.99,1.05,1.5],
-                 #[0.75,0.9,0.98,1.05,1.5],
-                #  [0.75,1.0,1.05,1.1,1.5] 0.2 0.2 0.15
-                # [0.75,0.95,1.0,1.1,1.5] 0.2 0.2 0.15
-                # [0.75,0.9,0.99,1.05,1.5] 0.2 0.2 0.15
-                # [0.75,0.9,1.02,1.1,1.5] 0.2 0.2 0.15
-                # [0.75,0.9,0.98,1.05,1.5] 0.2 0.2 0.15
-                # [0.75,0.9,1.0,1.05,1.5] 0.2 0.25 0.2
                  Strategy_Name = "SA_OnlyonetimeMI_simpleeffect",
                  sche_step = 18, adaptive_step = 2, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
@@ -34,7 +27,7 @@ class Config:
         self.save_name = save_name
         
         # 气体扩散相关参数
-        self.diffusivity_K = diffusivity_K # diffusivity
+        self.diffusivity_K = diffusivity_K # diffusivity，以前的仿真环境中使用的扩散系数，现在info.json中配置
         self.grid_x = grid_x #一格代表250m
         self.grid_y = grid_y
         # self.env = 80 * np.ones((grid_x, grid_y))\
@@ -45,7 +38,7 @@ class Config:
         #source
         self.randomsource = True
         self.sourcenum = sourcenum
-        self.R =  -8 * np.ones((grid_x, grid_y)) + 16 * np.random.random((grid_x, grid_y)) # initialize pollution resource map matrix
+        self.R =  -6.6 * np.ones((grid_x, grid_y)) + 12 * np.random.random((grid_x, grid_y)) # initialize pollution resource map matrix
         self.R[3][3] = 50
         self.R[17][17] = 50
         self.R[3][17] = 50
@@ -62,7 +55,7 @@ class Config:
 
         #time parameter
         self.time_co = 0.1 #高斯过程回归，时间步长
-        self.delta_t = 2 #环境演化时间步长 10 min
+        self.delta_t = 3 # 仿真环境推进时间步长
         
         #range
         self.env_extent = [0, self.grid_x, 0, self.grid_y]

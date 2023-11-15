@@ -40,11 +40,11 @@ def parse_arguments(verbose=False):
                         help="whether randomsource")
     parser.add_argument("--sourcenum",
                         type=int,
-                        default=4,
+                        default=3,
                         help="number of random pollution source")
     parser.add_argument("--R_change_interval",
                         type=int,
-                        default=40,
+                        default=6,
                         help="time interval of random pollution source change")
     parser.add_argument("--time_co",
                         type=float,
@@ -52,15 +52,15 @@ def parse_arguments(verbose=False):
                         help="time step of gaussian process")
     parser.add_argument("--delta_t",
                         type=float,
-                        default=2.0,
+                        default=3.0,
                         help="interval of environment change")
     parser.add_argument("--sensing_rate",
                         type=float,
-                        default=2.0,
+                        default=1.0,
                         help="sensing_rate")
     parser.add_argument("--noise_scale",
                         type=float,
-                        default=2.0,
+                        default=1.0,
                         help="noise_scale")
     parser.add_argument("--num_init_samples",
                         type=int,
@@ -68,7 +68,7 @@ def parse_arguments(verbose=False):
                         help="range of init samples")
     parser.add_argument("--max_num_samples",
                         type=int,
-                        default=30,
+                        default=48,
                         help="total schedule period")
     parser.add_argument("--sche_step",
                         type=int,
@@ -116,14 +116,14 @@ def parse_arguments(verbose=False):
                         help="vehicle size")
     parser.add_argument("--replenish_speed",
                         type=int,
-                        default=2,
+                        default=1,
                         help="replenish speed per time step")
     parser.add_argument("--water_volume",
                         type=int,
-                        default=6,
+                        default=4,
                         help="water volume of one vehicle")
     parser.add_argument('--alpha', type=list, default=[0.75,0.9,1.01,1.05,1.5], required=False, help='object weight.')
-    parser.add_argument("--save_dir",
+    parser.add_argument("--root_dir",
                         type=str,
                         default="./output/",
                         help="Directory for logs.")

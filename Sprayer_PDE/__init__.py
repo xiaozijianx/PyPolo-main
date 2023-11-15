@@ -84,8 +84,14 @@ class DiffusionPDE_withR(pde.PDEBase):
         """ numpy implementation of the evolution equation """
         state_lapacian = state.laplace(bc=self.bc)
         state_gradient = state.gradient(bc=self.bc)
+        # return (self.diffusivity * state_lapacian
+        #         + self.R - self.S - 0.0000008*state*state*state)
         return (self.diffusivity * state_lapacian
-                + self.R - self.S - 0.000025*state*state*state)
+                + self.R - self.S - 0.0000015*state*state*state)
+        # return (self.diffusivity * state_lapacian
+        #         + self.R - self.S)
+        
+        
 
     def sprayer(self, I):
         data_sprayer_train = self.data_sprayer_train

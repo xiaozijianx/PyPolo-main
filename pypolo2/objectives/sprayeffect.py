@@ -3,7 +3,7 @@ import numpy as np
 
 def calculate_effect(pollution):
     if pollution<40:
-        return 0.0005 * pollution
+        return -0.005 * pollution
     elif pollution<60:
         return 0.015 * pollution
     elif pollution<80:
@@ -14,6 +14,16 @@ def calculate_effect(pollution):
         return 0.35 * pollution
     elif pollution>=120:
         return 0.4 * pollution
+    # if pollution<20:
+    #     return 0.005 * pollution
+    # elif pollution<40:
+    #     return 0.015 * pollution
+    # elif pollution<65:
+    #     return 0.05 * pollution
+    # elif pollution<90:
+    #     return 0.15 * pollution
+    # else:
+    #     return 0.25 * pollution
 
 def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,extent: List[float], method = 1) -> np.ndarray:
     """

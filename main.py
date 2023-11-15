@@ -151,12 +151,6 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
         for i in range(Setting.sourcenum):
              Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
              
-        #测试画图，源固定且不动
-        # Setting.R[3][3] = 300
-        # Setting.R[17][17] = 300
-        # Setting.R[3][17] = 300
-        # Setting.R[17][3] = 300
-             
         # 计算如果没有更新洒水时的环境变化
         env_model1 = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
                  initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = current_step*Setting.delta_t) # build model
