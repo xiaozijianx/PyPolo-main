@@ -42,6 +42,18 @@ def get_strategy(rng, Setting, vehicle_team):
                 rng=rng,
                 vehicle_team=vehicle_team,
             )
+    elif Setting.strategy_name == "NonmyonicLatticeSpray":
+        strategy = pypolo2.strategies.NonMyopicLatticePlanningSprinkler(
+                task_extent=Setting.task_extent,
+                rng=rng,
+                vehicle_team=vehicle_team,
+            )
+    elif Setting.strategy_name == "EffectOrientedMCTSSpray":
+        strategy = pypolo2.strategies.MCTSSpray(
+                task_extent=Setting.task_extent,
+                rng=rng,
+                vehicle_team=vehicle_team,
+            )
     return strategy
 
 
@@ -71,14 +83,11 @@ def get_gprmodel(Setting, y_init, kernel):
 def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
     current_step = 0 #总规划长度
     adaptive_step = Setting.adaptive_step #自适应长度
-    # change_step = Setting.R_change_interval - 0*Setting.adaptive_step # 污染源变化间隔
     change_step = 0
     spray_effect = 0 # 洒水效果
     result, MI_information, observed_env, computed_effect = None, None, None, None
-    init_env = Setting.env
-    tstart = 0
     while current_step < Setting.max_num_samples:
-        # 计算用于显示的信息量，目标估计，洒水效果
+        # 计算用于洒水效果,环境真实值已知
         allpoint_list = []
         env_list = []
         for i in range (Setting.task_extent[0],Setting.task_extent[1]):
@@ -108,7 +117,8 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
                 computed_effect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
                 
         Setting.current_step = current_step
-        # scheduling and update agent goals 计算搜索时间
+        
+        # scheduling and update agent goals ###################################################
         if adaptive_step >= Setting.adaptive_step:
             start = tm.time()
             result = Setting.strategy.get(model = model, Setting = Setting, pred = observed_env)
@@ -125,36 +135,36 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
            
         # change source,每经过R_change_interval后，改变源分布和强度，
         if change_step >= Setting.R_change_interval:
-            Setting.R =  -6.6 * np.ones((Setting.grid_x, Setting.grid_y)) + 12 * np.random.random((Setting.grid_x, Setting.grid_y))
+            Setting.R =  -3 * np.ones((Setting.grid_x, Setting.grid_y)) + 6 * rng.random((Setting.grid_x, Setting.grid_y))
             change_step = 0
             if Setting.randomsource == True:
                 # gengerate two set of random numbers for source locations
                 numbers = rng.randint(0, 4, size=Setting.sourcenum * 2)
                 pairs = rng.choice(numbers, size=(Setting.sourcenum, 2), replace=False)
                 for i in range(Setting.sourcenum):
-                    number = rng.randint(120, 240, size=1)
+                    number = rng.randint(50, 70, size=1)
+                    # number= 200
+                    # Setting.RR[i,0] = int(pairs[i,0])
+                    # Setting.RR[i,1] = int(pairs[i,1])
                     if Setting.RR[i,0]+pairs[i,0]-2 < Setting.grid_x-1 and Setting.RR[i,0] + pairs[i,0] - 2 >=0:
                         Setting.RR[i,0] = int(Setting.RR[i,0]+pairs[i,0]-2)
                     if Setting.RR[i,1]+pairs[i,1]-2 < Setting.grid_y-1 and Setting.RR[i,1] + pairs[i,1] - 2 >=0:
                         Setting.RR[i,1] = int(Setting.RR[i,1]+pairs[i,1]-2)
                     Setting.RR[i,2] = number
-                init_env = Setting.env
                 tstart = current_step
-                
-        print(Setting.RR)
-        #  每周期更新源信息,源是缓慢变化的，源会不断变强到顶峰，然后变弱。定义一个强度系数
+
         s = 1
-        # # if change_step == 0:
-        # #     s = 0.2
-        # if change_step == 0 or change_step == Setting.R_change_interval - 1:
-        #     s = 0.5
         for i in range(Setting.sourcenum):
              Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
-             
-        # 计算如果没有更新洒水时的环境变化
+        # import sys
+        # sys.exit()
+        
+        # 执行规划结果并推进仿真环境
+        # 计算无洒水时的环境分布，推进表步长为1分钟
         env_model1 = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
-                 initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = current_step*Setting.delta_t) # build model
-        env_withoutspray = env_model1.solve(Setting.delta_t)
+                initial_field = Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = current_step * Setting.delta_t)
+        env_withoutspray = env_model1.solve(Setting.delta_t)[-1]
+            
         # update state 并将车辆的轨迹和洒水轨迹取出来
         x_new = []
         y_new = []
@@ -165,17 +175,44 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
             y_new.append(sensor.sense(current_state, rng).reshape(-1, 1))
             if Setting.current_step == 0:
                 Setting.data_sprayer_train.append(pd.DataFrame())
+            if vehicle.spray_flag == True:
+                new_pd = pd.DataFrame({"time":(Setting.current_step + 1) * Setting.delta_t, "x":current_state[0,0],\
+                                        "y":current_state[0,1], "spray_volume":200},index=[0])
+                Setting.data_sprayer_train[id-1] = pd.concat([Setting.data_sprayer_train[id-1],new_pd])
             else:
-                if vehicle.spray_flag == True:
-                    new_pd = pd.DataFrame({"time":(Setting.current_step + 1) * Setting.delta_t, "x":current_state[0,0],\
-                                            "y":current_state[0,1], "spray_volume":4000},index=[0])
-                    # Setting.data_sprayer_train[id-1] = Setting.data_sprayer_train[id-1].append(new_pd, ignore_index=True)
-                    Setting.data_sprayer_train[id-1] = pd.concat([Setting.data_sprayer_train[id-1],new_pd])
+                new_pd = pd.DataFrame({"time":(Setting.current_step + 1) * Setting.delta_t, "x":current_state[0,0],\
+                                        "y":current_state[0,1], "spray_volume":0},index=[0])
+                Setting.data_sprayer_train[id-1] = pd.concat([Setting.data_sprayer_train[id-1],new_pd])    
         # 计算带入洒水后的环境情况
         env_model2 = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
-                 initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = current_step*Setting.delta_t) # build model
-        Setting.env = env_model2.solve(Setting.delta_t)
+                initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = current_step * Setting.delta_t) # build model
+        env_withspray = env_model2.solve(Setting.delta_t)[-1]
+        
+        # 疑似污染源标记
+        for id, vehicle in vehicle_team.items():
+            current_state = vehicle.state.copy().reshape(1, -1).astype(int)
+            # 如果当前状态在污染源四周，则认为已经发现了
+            for i in range(Setting.sourcenum):
+                # 判断是否在周围
+                if ((current_state[0,0]-Setting.RR[i,0])**2 + (current_state[0,1]-Setting.RR[i,1])**2) <= 2:
+                    # 判断是否已经发现
+                    in_flag = False
+                    for j in range(len(Setting.sources)):
+                        if Setting.RR[i,0] == Setting.sources[j][0] and Setting.RR[i,1] == Setting.sources[j][1]:
+                            in_flag = True
+                    if in_flag:
+                        continue
+                    else:
+                        Setting.sources.append([Setting.RR[i,0], Setting.RR[i,1]])         
+                        
+        print(Setting.sources)   
+        Setting.env = env_withspray
         sensor.set_env(Setting.env)
+        # 移除污染标记
+        for i in range(len(Setting.sources)-1, -1, -1):
+            if Setting.env[Setting.sources[i][0],Setting.sources[i][1]] <= 45:
+                del Setting.sources[i]    
+        
         # 计算洒水效果
         spray_effect = np.sum(env_withoutspray - Setting.env)
         print(spray_effect)
@@ -193,7 +230,7 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
         model.add_data(model_input, y_new)
         model.optimize(num_iter=len(y_new), verbose=False)
         
-        adaptive_step = adaptive_step + 1    
+        adaptive_step = adaptive_step + 1     
         current_step = current_step + 1
         change_step = change_step + 1  
     return 0
@@ -205,17 +242,20 @@ def Set_initual_data(rng,Setting,sensor):
         numbers = rng.randint(0, 19, size=Setting.sourcenum * 2)
         pairs = rng.choice(numbers, size=(Setting.sourcenum, 2), replace=False)
         for i in range(Setting.sourcenum):
-            number = rng.randint(120, 240, size=1)
+            number = rng.randint(50, 70, size=1)
             Setting.RR[i,0] = int(pairs[i,0])
             Setting.RR[i,1] = int(pairs[i,1])
             Setting.RR[i,2] = number
 
-    print(Setting.RR)
-    # #  每周期更新源信息,源是缓慢变化的，源会不断变强到顶峰，然后变弱。定义一个强度系数
     s = 1
-    Setting.R =  -6.6 * np.ones((Setting.grid_x, Setting.grid_y)) + 12 * np.random.random((Setting.grid_x, Setting.grid_y))
+    Setting.R =  -3 * np.ones((Setting.grid_x, Setting.grid_y)) + 6 * rng.random((Setting.grid_x, Setting.grid_y))
     for i in range(Setting.sourcenum):
-            Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
+         Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
+            
+    env_model = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
+                 initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = 0) # build model
+    Setting.env = env_model.solve(10)[-1]
+    sensor.set_env(Setting.env)
     
     env_model = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
                     initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = 0) # build model
@@ -227,11 +267,8 @@ def Set_initual_data(rng,Setting,sensor):
 
     #固定站的观测的观测
     for time in range(Setting.time_before_sche):
-        # y_stations[Setting.station_size*time:Setting.station_size*(time+1)] = sensor.sense(states=Setting.x_station, rng=rng).reshape(-1, 1)
-        # time_stations[Setting.station_size*time:Setting.station_size*(time+1)] = (time-Setting.time_before_sche+1)*Setting.time_co
         time_stations[Setting.station_size*time:Setting.station_size*(time+1)] = (time-Setting.time_before_sche+1)*1
-        # time_stations[Setting.station_size*time:Setting.station_size*(time+1)] = (time-10+1)*Setting.time_co
-        Setting.env = env_model.solve((time+1)*Setting.delta_t)
+        Setting.env = env_model.solve((time+1)*5)[-1]
         sensor.set_env(Setting.env)
         
     #假设每次观测后均变化时间，环境也随之发生变化
@@ -239,9 +276,8 @@ def Set_initual_data(rng,Setting,sensor):
         y_init[time] = sensor.sense(states=Setting.x_init[time], rng=rng).reshape(-1, 1)
         if time == 0:
             y_stations[:] = y_init[time] - 20
-        # time_init[time] = (time+1)*Setting.time_co
         time_init[time] = (time+1)*1
-        Setting.env = env_model.solve((1+Setting.time_before_sche+time)*Setting.delta_t)
+        Setting.env = env_model.solve((1+Setting.time_before_sche+time)*5)[-1]
         sensor.set_env(Setting.env)
         
     Setting.x_init = np.hstack((Setting.x_init,time_init))
@@ -271,12 +307,13 @@ def main():
                 effect_threshold = args.effect_threshold)
 
     # environment initual
-    env_model = get_env_model(Setting)
-    Setting.env = env_model.solve(Setting.delta_t)
+    # env_model = get_env_model(Setting)
+    # Setting.env = env_model.solve(Setting.delta_t)
     
     # save directory
     # starttime = Setting.starttime.replace(' ', '-').replace(':', '-')
     Setting.save_dir = '{}/{}/teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.team_size)
+    # Setting.save_dir = '{}/{}/numsource_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.sourcenum)
     # Setting.save_name = args.save_name
     evaluator = get_evaluator()
     logger = pypolo2.experiments.Logger(None, Setting)

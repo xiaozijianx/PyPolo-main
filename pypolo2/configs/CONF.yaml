@@ -23,7 +23,7 @@ noise_scale: 1.0
 num_init_samples: 1
 max_num_samples: 48
 sche_step: 18
-adaptive_step: 2
+adaptive_step: 3
 Env: 'Dynamic'
 effect_threshold: 0.0
 
@@ -36,6 +36,6 @@ lr_hyper: 0.01
 lr_nn: 0.001
 
 # vehicle team
-team_size: 5
+team_size: 4
 replenish_speed: 1
 water_volume: 4

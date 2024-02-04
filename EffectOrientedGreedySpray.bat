@@ -5,13 +5,15 @@ set "pids="
 set config=./pypolo2/configs/CONF.yaml
 
 REM for seed in 0 3 7 11 13 15 18 20 32 42
-for %%s in (0 3 7 11 15 18 20 32 42 ^
-            50 55 60 66 70) do (
+for %%s in (0 3 7 11 15 18 20 32 42 50) do (
     for %%t in (EffectOrientedGreedySpray) do (
         (
-            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 8 --adaptive_step 8
-            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 5 --sche_step 8 --adaptive_step 8
-            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 7 --sche_step 8 --adaptive_step 8
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 18 --sourcenum 1
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 18 --sourcenum 2
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 18 --sourcenum 3
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 18 --sourcenum 4
+            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 18 --sourcenum 5
+            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 18 --sourcenum 6
             rem python main.py --config %config% --seed %%s --strategy_name %%t --team_size 5 --sche_step 18 --R_change_interval 8
         ) || (
             REM Append the ERRORLEVEL (PID) to the pids variable

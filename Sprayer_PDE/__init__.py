@@ -8,7 +8,7 @@ import json
 from scipy import interpolate
 from scipy.stats import multivariate_normal
 
-f2 = open('Sprayer_PDE/info.json', 'r')
+f2 = open('Sprayer_PDE\info2.json', 'r')
 info_data = json.load(f2)
 sprayer_model_mean = [0.0, 0.0]
 
@@ -20,21 +20,36 @@ sprayer_model_variance = [sprayer_model_variance_num, sprayer_model_variance_num
 
 lambda_S = info_data["sprayer_lambda"]
 hyper_dt = 0.01
+S_dt = 0.1
+
+lambda_sed = info_data["lambda_sed"]
+
+n_s = info_data["n_s"]
+
 # lambda_S = 0.01
 
 class Diffusion_Model():
     def __init__(self, diffusivity=1, x_range = 10, y_range = 10,\
                  initial_field = np.zeros((10, 10)), R_field = np.zeros((10, 10)), data_sprayer_train = [], t_start = 0):
-        self.diffusivity = diffusivity
+        self.diffusivity = diffusivity_K
         self.x_range = x_range
         self.y_range = y_range
         self.grid = pde.UnitGrid([x_range, y_range])
         self.R_field = pde.ScalarField(grid = self.grid, data = R_field)
         self.initial_field = pde.ScalarField(grid = self.grid, data = initial_field)
-        self.PHY_PDE = DiffusionPDE_withR(diffusivity=diffusivity, R = self.R_field, data_sprayer_train = data_sprayer_train, t_start = t_start)
+        self.data_sprayer_train = data_sprayer_train
+        self.t_start = t_start
+        # self.PHY_PDE = DiffusionPDE_withR(diffusivity=diffusivity, R = self.R_field, data_sprayer_train = data_sprayer_train, t_start = t_start)
         
-    def solve(self, t):
-        return self.PHY_PDE.solve(self.initial_field, t_range = t, dt = hyper_dt).data
+    def solve(self, t, show_dt = 1):
+        result = []
+        now_field = self.initial_field
+        for i in range(0, t, show_dt):
+            self.PHY_PDE = DiffusionPDE_withR(diffusivity=self.diffusivity, R = self.R_field,\
+                                              data_sprayer_train = self.data_sprayer_train, t_start = self.t_start + i)
+            now_field = self.PHY_PDE.solve(now_field, t_range = show_dt, dt = hyper_dt)
+            result.append(now_field.data)
+        return result
 
 class DiffusionPDE_withR(pde.PDEBase):
     def __init__(self, diffusivity = diffusivity_K, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"\
@@ -52,7 +67,7 @@ class DiffusionPDE_withR(pde.PDEBase):
         self.grid_y = self.R.data.shape[1]
         
     def evolution_rate(self, state, t=0):
-        if int(t * 100) % 50 == 0:
+        if int(t * 1 / hyper_dt) % int(1 / S_dt) == 0:
             # print("t")
             # print(t)
             data_result = itertools.product([t + self.t_start],range(self.grid_x),range(self.grid_y))
@@ -64,7 +79,7 @@ class DiffusionPDE_withR(pde.PDEBase):
                 for i_y in range(self.grid_y):
                     self.S_matrix[i_x][i_y] = self.S_S[i_count]
                     i_count += 1
-            self.S_data = lambda_S * np.multiply(np.square(np.clip(state.data, 0, 2 ** 12)), self.S_matrix)
+            self.S_data = lambda_S * np.multiply(np.clip(state.data, 0, 2 ** 12) ** n_s, self.S_matrix)
             # print("state")
             # print(state.data.max())
             # print(state.data.min())
@@ -84,14 +99,8 @@ class DiffusionPDE_withR(pde.PDEBase):
         """ numpy implementation of the evolution equation """
         state_lapacian = state.laplace(bc=self.bc)
         state_gradient = state.gradient(bc=self.bc)
-        # return (self.diffusivity * state_lapacian
-        #         + self.R - self.S - 0.0000008*state*state*state)
         return (self.diffusivity * state_lapacian
-                + self.R - self.S - 0.0000015*state*state*state)
-        # return (self.diffusivity * state_lapacian
-        #         + self.R - self.S)
-        
-        
+                + self.R - self.S - lambda_sed * (state ** 1))
 
     def sprayer(self, I):
         data_sprayer_train = self.data_sprayer_train

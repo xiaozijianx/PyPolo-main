@@ -46,7 +46,7 @@ def try_move(context, agent, time, move):
 #尝试改变洒水方式0，将原状态改为不洒水，在补水前随机插入洒水动作
 #对于补水时刻的移动动作调整，有两种方式，1.在新插入的洒水动作处的添加一个停留移动动作，其余动作依次顺延
 #2.不插入动作，将后续的补水处的停留均后移，这里选择第二种
-def try_spray0(context, agent, selecttime):
+def try_spray0(rng, context, agent, selecttime):
   previous_policy = context.policy_matrix[agent].copy()
   num = 0
   time = 0
@@ -69,7 +69,7 @@ def try_spray0(context, agent, selecttime):
         break
     if replenish_time == 0:
       return None
-    rand_replenish_time = random.randint(time + 1, replenish_time)
+    rand_replenish_time = rng.randint(time + 1, replenish_time + 1)
     
     # 计算变更后的policy
     new_policy = previous_policy.copy()
@@ -103,7 +103,7 @@ def try_spray0(context, agent, selecttime):
 #尝试改变洒水方式1，随机选择一个动作，当该动作为不洒水动作时，将该不洒水动作移除，后续动作均前移，在最后根据车辆状态插入动作
 # 对于补水时的停留动作，有两种修复方式，第一种，将不洒水时刻的移动动作同步移除，在最后加入停留动作；第二种，将不洒水后的补水停留均前移。
 # 第一种的实现较为简单，这里选择第二种
-def try_spray1(context, agent, selecttime):
+def try_spray1(rng, context, agent, selecttime):
   agent_position_list = context.curr_trace_set[agent, :, :].copy()
   previous_policy = context.policy_matrix[agent].copy()
   num = 0
@@ -148,7 +148,7 @@ def try_spray1(context, agent, selecttime):
     return None
   
 #尝试改变洒水方式2，在一个洒水周期内移动非洒水动作的位置
-def try_spray2(context, agent, selecttime):
+def try_spray2(rng, context, agent, selecttime):
   previous_policy = context.policy_matrix[agent].copy()
   num = 0
   time = 0
@@ -191,7 +191,7 @@ def try_spray2(context, agent, selecttime):
       return None
     
     # 寻找准备交换的洒水时段
-    rand_exchange_time = random.randint(0, num-1)
+    rand_exchange_time = rng.randint(0, num)
     exchange_time = 0
     for i in range(context.GetMaxTime()):
       if previous_policy[replenish_time_1 + 1 + i,2] == 1:
@@ -280,11 +280,11 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
       else:
         # 调整洒水动作
         if rand_spray_category == 0:
-          New_policy = try_spray0(curr_context, rand_agent, rand_time1)
+          New_policy = try_spray0(rng, curr_context, rand_agent, rand_time1)
         elif rand_spray_category == 1:
-          New_policy = try_spray1(curr_context, rand_agent, rand_time2) 
+          New_policy = try_spray1(rng, curr_context, rand_agent, rand_time2) 
         elif rand_spray_category == 2:
-          New_policy = try_spray2(curr_context, rand_agent, rand_time2)
+          New_policy = try_spray2(rng, curr_context, rand_agent, rand_time2)
       
       # 分类执行
       # 根据随机选择的动作操作智能体轨迹

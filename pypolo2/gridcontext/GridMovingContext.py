@@ -44,6 +44,22 @@ class GridMovingContext():
     self.model = model
     self.alpha = alpha
     self.pollution_distribute = pollution_distribute
+    # 计算峰值污染区域（固定）
+    indices = np.argpartition(pollution_distribute, -4, axis=None)[-4:]
+    row_indices, col_indices = np.unravel_index(indices, pollution_distribute.shape)
+    # 计算最大元素以及周围一圈元素的浓度均值
+    self.sourcelocations = set()
+    for i in range(len(row_indices)):
+      max_row = row_indices[i]
+      max_col = col_indices[i]
+      # 计算周围一圈元素的位置
+      for row_offset in range(-2, 3):
+        for col_offset in range(-2, 3):
+          surrounding_row = max_row + row_offset
+          surrounding_col = max_col + col_offset
+          if 0 <= surrounding_row < pollution_distribute.shape[0] and 0 <= surrounding_col < pollution_distribute.shape[1]:
+            self.sourcelocations.add((surrounding_row, surrounding_col))
+              
     self.allpoint = allpoint
     self.agent_number = self.agent_init_position.shape[0]
     print("agent_number")
@@ -102,123 +118,113 @@ class GridMovingContext():
       mid_line[j,:,:] = line
     return mid_line
 
-  def CalculateSpraySQ(self):
-    return self.calculate_Spray_scores()
+  def CalculateSpraySQ(self, method=1):
+    return self.calculate_Spray_scores(method)
   
   def CalculateMISQ(self):
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
     return self.calculate_MI_scores(2)
 
-  def calculate_Spray_scores(self, method = 1):
+  def calculate_Spray_scores(self, method=1):
     if method == 1:
       #calcullate spray effcet
       spray_effect = 0
       curr_trace_set = self.curr_trace_set.copy()
       pollution_distribute = self.pollution_distribute.copy()
-          
-      # 分组，前一半时间优先计算收益
-      # first_half = int(np.ceil(self.agent_number / 2))
-      # for j in range(self.time):  
-      #   spray_area = []
-      #   for i in range(first_half):
-      #     if self.policy_matrix[i, j, 2] == 1:
-      #       r0 = curr_trace_set[i, j, 0]
-      #       c0 = curr_trace_set[i, j, 1]
-      #       spray_area.append([r0,c0])
-      #   spray_area = np.array(spray_area)
-      #   spray_area = np.unique(spray_area, axis=0)
-      #   for i in range(spray_area.shape[0]):
-      #     r0 = spray_area[i, 0]
-      #     c0 = spray_area[i, 1]
-      #     for a in range(3):
-      #       for b in range(3):
-      #         r = int(r0 - 1 + a)
-      #         c = int(c0 - 1 + b)
-      #         if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
-      #           if a == 1 and b == 1:
-      #             spray_effect = spray_effect + 0.15*(self.Setting.sche_step+20-j)*calculate_effect(pollution_distribute[r,c])
-      #             pollution_distribute[r,c] = pollution_distribute[r,c] - 1.0*calculate_effect(pollution_distribute[r,c])
-      #           else:
-      #             spray_effect = spray_effect + 0.5*0.15*(self.Setting.sche_step+20-j)*calculate_effect(pollution_distribute[r,c])
-      #             pollution_distribute[r,c] = pollution_distribute[r,c] - 1.0*0.5*calculate_effect(pollution_distribute[r,c])    
-          
-      # for i in range(self.agent_number - first_half):
-      #   for j in range(self.time):  
-      #     # if self.move_matrix[self.policy_matrix[i, j]][2] == 1:
-      #     if self.policy_matrix[i+first_half, j, 2] == 1:
-      #       r0 = curr_trace_set[i+first_half, j, 0]
-      #       c0 = curr_trace_set[i+first_half, j, 1]
-
-      #       for a in range(3):
-      #         for b in range(3):
-      #           r = int(r0 - 1 + a)
-      #           c = int(c0 - 1 + b)
-      #           if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
-      #             if a == 1 and b == 1:
-      #               spray_effect = spray_effect + 0.15*(self.Setting.sche_step+20-j)*calculate_effect(pollution_distribute[r,c])
-      #               pollution_distribute[r,c] = pollution_distribute[r,c] - 1.0*calculate_effect(pollution_distribute[r,c])
-      #             else:
-      #               spray_effect = spray_effect + 0.5*0.15*(self.Setting.sche_step+20-j)*calculate_effect(pollution_distribute[r,c])
-      #               pollution_distribute[r,c] = pollution_distribute[r,c] - 1.0*0.5*calculate_effect(pollution_distribute[r,c])    
-      # for i in range(self.agent_number):
+      spray_done = np.ones((self.agent_number,pollution_distribute.shape[0],pollution_distribute.shape[1]))
       for j in range(self.time):  
         spray_area = []
         for i in range(self.agent_number):
           if self.policy_matrix[i, j, 2] == 1:
             r0 = curr_trace_set[i, j, 0]
             c0 = curr_trace_set[i, j, 1]
-            spray_area.append([r0,c0])
-        spray_area = np.array(spray_area)
-        spray_area = np.unique(spray_area, axis=0)
-        for i in range(spray_area.shape[0]):
-          r0 = spray_area[i, 0]
-          c0 = spray_area[i, 1]
-          for a in range(3):
-            for b in range(3):
-              r = int(r0 - 1 + a)
-              c = int(c0 - 1 + b)
-              if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
-                if a == 1 and b == 1:
-                  # spray_effect = spray_effect + 0.15*(self.Setting.sche_step+1-j)*calculate_effect(pollution_distribute[r,c])
-                  spray_effect = spray_effect + 0.15*(self.Setting.sche_step+3-j)*calculate_effect(pollution_distribute[r,c])
-                  pollution_distribute[r,c] = 0.3*(pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c]))
-                  # pollution_distribute[r,c] = pollution_distribute[r,c] - 1.0*calculate_effect(pollution_distribute[r,c])
-                else:
-                  # spray_effect = spray_effect + 0.5*(0.9)**j*calculate_effect(pollution_distribute[r,c])
-                  spray_effect = spray_effect + 0.5*0.15*(self.Setting.sche_step+3-j)*calculate_effect(pollution_distribute[r,c])
-                  pollution_distribute[r,c] = 0.7*(pollution_distribute[r,c] - 0.5*1.0*calculate_effect(pollution_distribute[r,c]))
-                  # pollution_distribute[r,c] = pollution_distribute[r,c] - 1.0*0.5*calculate_effect(pollution_distribute[r,c])
+            for a in range(5):
+              for b in range(5):
+                r = int(r0 - 2 + a) 
+                c = int(c0 - 2 + b)
+                effect_rate = 1
+                # 判断该区域是否为污染源区域
+                # self.Setting.sources
+                for n in range(len(self.Setting.sources)):
+                  if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
+                    effect_rate = 0.5
+                    break
+                
+                if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                  if a == 2 and b == 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.1
+                  elif (a - 2)**2 + (b - 2)**2 <= 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.7*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.7*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.3
+                  else:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.5*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.4
+                    
       return spray_effect
     elif method == 2:
-      # 计算洒水收益时，不仅需要考虑时间衰减，还需要考虑确定性权重
       #calcullate spray effcet
       spray_effect = 0
       curr_trace_set = self.curr_trace_set.copy()
       pollution_distribute = self.pollution_distribute.copy()
-          
-      # spray_time = 0
-      for j in range(self.time):
+      spray_done = np.ones((self.agent_number,pollution_distribute.shape[0],pollution_distribute.shape[1]))
+      for j in range(self.time):  
+        spray_area = []
         for i in range(self.agent_number):
-          # if self.move_matrix[self.policy_matrix[i, j]][2] == 1:
           if self.policy_matrix[i, j, 2] == 1:
             r0 = curr_trace_set[i, j, 0]
             c0 = curr_trace_set[i, j, 1]
-
-            for a in range(3):
-              for b in range(3):
-                r = int(r0 - 1 + a)
-                c = int(c0 - 1 + b)
+            for a in range(5):
+              for b in range(5):
+                r = int(r0 - 2 + a) 
+                c = int(c0 - 2 + b)
+                effect_rate = 1
+                # 判断该区域是否为污染源区域
+                # self.Setting.sources
+                for n in range(len(self.Setting.sources)):
+                  if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
+                    effect_rate = 0.5
+                    break
+                
                 if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
-                  if a == 1 and b == 1:
-                    spray_effect = spray_effect + (0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j*calculate_effect(pollution_distribute[r,c])
-                    pollution_distribute[r,c] = pollution_distribute[r,c] - calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + (0.9)**j*0.2*pollution_distribute[r,c]
-                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.2*pollution_distribute[r,c]
+                  if a == 2 and b == 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.1
+                  elif (a - 2)**2 + (b - 2)**2 <= 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.7*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.7*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.3
                   else:
-                    spray_effect = spray_effect + 0.5*(0.8+0.2*np.max((self.MIforeverypoint[r,c]+0.4,1)))**j*calculate_effect(pollution_distribute[r,c])
-                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + (0.9)**j*0.15*pollution_distribute[r,c]
-                    # pollution_distribute[r,c] = pollution_distribute[r,c] - 0.15*pollution_distribute[r,c]
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.5*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.4      
+          if self.policy_matrix[i, j, 2] == -1:
+            for m in range(pollution_distribute.shape[0]):
+              for n in range(pollution_distribute.shape[1]):
+                if spray_done[i,m,n] == 1:     
+                  spray_done[:,m,n] = 1
       return spray_effect
   
   def calculate_Sprayscores_foreveryvehicle(self,method = 1):

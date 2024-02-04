@@ -69,8 +69,8 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
 
                 if self.task_extent[0] <= neighbor_node[0] < self.task_extent[1] and self.task_extent[2] <= neighbor_node[1] < self.task_extent[3]:
                     nodes.append(neighbor)
-                    graph.add_edge(edge[0], edge[1], weight=1e-4+(0.8**(length-current_length))*weights[neighbor_node[0], neighbor_node[1]])
-                    # graph.add_edge(edge[0], edge[1], weight=1e-4 + weights[neighbor_node[0], neighbor_node[1]])
+                    # graph.add_edge(edge[0], edge[1], weight=1e-4+(0.8**(length-current_length))*weights[neighbor_node[0], neighbor_node[1]])
+                    graph.add_edge(edge[0], edge[1], weight=1e-4 + weights[neighbor_node[0], neighbor_node[1]])
 
         if len(graph.edges()) == 1:
             raise ValueError
@@ -88,13 +88,15 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
             for j in range (self.task_extent[2],self.task_extent[3]):
                 allstate_list_forpred.append([i, j, model.time_stamp])
         allstate_forpred = np.array(allstate_list_forpred)
+        print(allstate_forpred.shape)
+        print(pred.shape)
         sprayeffect_all = spray_effect(allstate_forpred,allstate_forpred,pred,self.task_extent,method=2).ravel()
 
         # Processing
-        sprayeffect = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
-        for i in range (Setting.task_extent[0],Setting.task_extent[1]):
-            for j in range (Setting.task_extent[2],Setting.task_extent[3]):
-                sprayeffect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
+        # sprayeffect = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
+        # for i in range (Setting.task_extent[0],Setting.task_extent[1]):
+        #     for j in range (Setting.task_extent[2],Setting.task_extent[3]):
+        #         sprayeffect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
         
         result = dict()
         for id, vehicle in self.vehicle_team.items():
@@ -111,7 +113,7 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
             path = self.greedy_search_multi_step(6, scores, id)[1:]
 
             goal_states = np.zeros((len(path),2))
-            spray_flag = np.ones((len(path),1), dtype=bool) 
+            spray_flag = np.ones((len(path),1)) 
             
             # Append waypoint
             replenishment = 0
@@ -122,30 +124,38 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
             initual_replenish = True
             replenish_flag = False
             numreplenish = 0
+            water_volume_now = vehicle.water_volume_now
+            # print(path)
             for index, location in enumerate(path):
-                print(index)
-                if pathlen >= len(path) - 1:
+                # print(index)
+                if pathlen > len(path) - 1:
                     break
+                # if vehicle.goal_spray_flag == []:
+                #     goal_states[index,0] = path[index][0]
+                #     goal_states[index,1] = path[index][1]
+                #     spray_flag[index,0] = 1
                 # 先判断水量
                 if index < Setting.water_volume//Setting.replenish_speed:
-                    if vehicle.goal_spray_flag[index] == -1 and initual_replenish == True:
+                    if len(vehicle.goal_spray_flag) != 0 and initual_replenish == True and vehicle.goal_spray_flag[0] == -1 and water_volume_now < Setting.water_volume:
                         goal_states[index,0] = initual_state[0]
                         goal_states[index,1] = initual_state[1]
                         pathlen = pathlen + 1 
-                        spray_flag[index,0] = False
+                        spray_flag[index,0] = -1
+                        water_volume_now = water_volume_now + Setting.replenish_speed
                         continue
                     else:
                         initual_replenish = False
                 if index >= Setting.water_volume//Setting.replenish_speed or initual_replenish == False:
-                    if vehicle.water_volume_now - movestep < 0 or replenish_flag == True:
+                    if water_volume_now - movestep <= 0 or replenish_flag == True:
                         if pathaccept == 0:
                             goal_states[index,0] = initual_state[0]
                             goal_states[index,1] = initual_state[1]
                         else:
                             goal_states[index,0] = path[pathaccept-1][0]
-                            goal_states[index,1] = path[pathaccept-1][0]
+                            goal_states[index,1] = path[pathaccept-1][1]
                         pathlen = pathlen + 1 
-                        spray_flag[index,0] = False
+                        spray_flag[index,0] = -1
+                        water_volume_now = water_volume_now + Setting.replenish_speed
                         replenish_flag = True
                         numreplenish = numreplenish + 1
                         if numreplenish >= Setting.water_volume//Setting.replenish_speed:
@@ -153,7 +163,7 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
                     else:
                         goal_states[index,0] = path[pathaccept][0]
                         goal_states[index,1] = path[pathaccept][1]
-                        spray_flag[index,0] = True
+                        spray_flag[index,0] = 1
                         pathlen = pathlen + 1 
                         movestep = movestep + 1
                         pathaccept = pathaccept + 1
@@ -162,19 +172,17 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
             
             #reduce effect
             for i in range(len(path)):
-                if self.vehicle_team[id].water_volume_now > i:
-                    for m in range(3):
-                        for n in range(3):
-                            r = goal_states[i,0] -1 + m
-                            c = goal_states[i,1] -1 + n
-                            if r < self.task_extent[0] or r >= self.task_extent[1] or c < self.task_extent[2] or c >= self.task_extent[3]:
-                                continue
-                            if m == 1 and n == 1:
-                                mi_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(0.9**i*2)*mi_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
-                                if spray_flag[i,0] == True:
-                                    sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.9**i*0.2))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
+                for m in range(3):
+                    for n in range(3):
+                        r = goal_states[i,0] -1 + m
+                        c = goal_states[i,1] -1 + n
+                        if r < self.task_extent[0] or r >= self.task_extent[1] or c < self.task_extent[2] or c >= self.task_extent[3]:
+                            continue
+                        if m == 1 and n == 1:
                             if spray_flag[i,0] == True:
-                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.9**i*0.15))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
-                            mi_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(0.9**i*1.5)*mi_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
-                       
+                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.2))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
+                        else:
+                            if spray_flag[i,0] == True:
+                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.1))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
+        print(result)               
         return result

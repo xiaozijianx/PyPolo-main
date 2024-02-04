@@ -76,7 +76,7 @@ def parse_arguments(verbose=False):
                         help="max schedule steps")
     parser.add_argument("--adaptive_step",
                         type=int,
-                        default=2,
+                        default=3,
                         help="adaptive steps")
     parser.add_argument("--Env",
                         type=bool,
@@ -112,7 +112,7 @@ def parse_arguments(verbose=False):
                         help="kernal paremeter lr_nn")
     parser.add_argument("--team_size",
                         type=int,
-                        default=5,
+                        default=4,
                         help="vehicle size")
     parser.add_argument("--replenish_speed",
                         type=int,

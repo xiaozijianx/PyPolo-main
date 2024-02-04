@@ -1,0 +1,6 @@
+# config.yml
+
+run: DQN
+env: CartPole-v1
+stop:
+  training_iteration: 30

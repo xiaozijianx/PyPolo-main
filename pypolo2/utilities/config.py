@@ -8,14 +8,14 @@ class Config:
     def __init__(self, root_dir = "./outputs", save_name = "text", strategy = None, 
                  diffusivity_K =1.2, grid_x = 20, grid_y = 20, time_co = 0.0001, delta_t = 0.01,
                  sensing_rate = 1.0, noise_scale = 1.0, num_init_samples = 1, seed = 11,
-                 time_before_sche = 5, station_size = 1, sourcenum = 3, R_change_interval = 6,
+                 time_before_sche = 5, station_size = 1, sourcenum = 3, R_change_interval = 3,
                  init_amplitude = 1.0, init_lengthscale = 0.5, init_noise = 1.0,
                  lr_hyper = 0.01, lr_nn = 0.001,
-                 team_size = 5, water_volume=4, replenish_speed = 1,
-                 max_num_samples = 48, current_step = 0 ,bound = 20, 
+                 team_size = 4, water_volume=4, replenish_speed = 1,
+                 max_num_samples = 48, current_step = 0 ,bound = 30, 
                  alpha = [0.75,0.9,0.99,1.05,1.5],
                  Strategy_Name = "SA_OnlyonetimeMI_simpleeffect",
-                 sche_step = 18, adaptive_step = 2, Env = "Dynamic",
+                 sche_step = 8, adaptive_step = 8, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
         
         # 实验数据选择,污染源数目选择,森林灭火拓展试验专用
@@ -38,14 +38,28 @@ class Config:
         #source
         self.randomsource = True
         self.sourcenum = sourcenum
-        self.R =  -6.6 * np.ones((grid_x, grid_y)) + 12 * np.random.random((grid_x, grid_y)) # initialize pollution resource map matrix
-        self.R[3][3] = 50
-        self.R[17][17] = 50
-        self.R[3][17] = 50
-        self.R[17][3] = 50
+        self.R =  -3 * np.ones((grid_x, grid_y)) + 6 * np.random.random((grid_x, grid_y)) # initialize pollution resource map matrix
         self.R_change_interval = R_change_interval
         self.data_sprayer_train = [] 
         self.RR = np.zeros((self.sourcenum, 3)).astype(int)
+        # self.RR[0,0] = 17
+        # self.RR[0,1] = 3
+        # self.RR[0,2] = 60
+        # self.RR[1,0] = 17
+        # self.RR[1,1] = 17
+        # self.RR[1,2] = 60
+        # self.RR[2,0] = 3
+        # self.RR[2,1] = 17
+        # self.RR[2,2] = 60
+        # self.RR[3,0] = 17
+        # self.RR[3,1] = 3
+        # self.RR[3,2] = 60
+        # self.RR = self.RR.astype(int)
+        # self.R[self.RR[0,0],self.RR[0,1]] = self.RR[0,2]
+        # self.R[self.RR[1,0],self.RR[1,1]] = self.RR[1,2]
+        # self.R[self.RR[2,0],self.RR[2,1]] = self.RR[2,2]
+        # self.R[self.RR[3,0],self.RR[3,1]] = self.RR[3,2]
+        self.sources = []# 疑似污染源
         # data_sprayer_train = []
         # time_range = 100
         # data_sprayer_train.append(pd.DataFrame({"time":range(t , t + time_range), "x":np.linspace(0,grid_x,time_range),\
@@ -55,7 +69,7 @@ class Config:
 
         #time parameter
         self.time_co = 0.1 #高斯过程回归，时间步长
-        self.delta_t = 3 # 仿真环境推进时间步长
+        self.delta_t = 10 # 仿真环境推进时间步长，min
         
         #range
         self.env_extent = [0, self.grid_x, 0, self.grid_y]
@@ -112,6 +126,8 @@ class Config:
         self.replenish_speed = replenish_speed
         self.water_volume = water_volume
         
+        # 实验接受率
+        self.accept_rate = []
 
     
         

@@ -51,7 +51,6 @@ class Sprinkler(ISensor):
         """
         if states.ndim == 1:
             states = states.reshape(1, -1)
-        #在后面的规划中x指列，y指行
         observations = self.env[states[:, 0].astype(int), states[:, 1].astype(int)]
         if rng is not None:
             observations = rng.normal(loc=observations, scale=self.noise_scale)

@@ -27,7 +27,7 @@ class SPRINKLER_REPLENISHANYWHERE(IRobot):
         dynamics = DubinsCar(10)
         super().__init__(init_state, dynamics, 0.1, 5)
         # self.max_lin_vel = 1.0
-        # self.movements = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)]
+        self.movements = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)]
         self.goal_spray_flag = []
         self.spray_flag = False
         

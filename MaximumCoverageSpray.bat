@@ -5,16 +5,17 @@ set "pids="
 set config=./pypolo2/configs/CONF.yaml
 
 REM for seed in 0 3 7 11 13 15 18 20 32 42
-for %%s in (0 3 7 11 15 18 20 32 42 ^
-            50 55 60 66 70) do (
+for %%s in (7 11 18 20 25 36 42 50 60 72 80 85) do (
+@REM for %%s in (36 60) do (
     for %%t in (MaximumCoverageSpray) do (
         (
-            rem python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 
-            rem python main.py --config %config% --seed %%s --strategy_name %%t --team_size 5 --sche_step 18 
-            rem python main.py --config %config% --seed %%s --strategy_name %%t --team_size 7 --sche_step 18 
-            rem python main.py --config %config% --seed %%s --strategy_name %%t --team_size 5 --sche_step 18 
-            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 4 --sche_step 18
-            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 6 --sche_step 18
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --R_change_interval 3 --sourcenum 1
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --R_change_interval 3 --sourcenum 2
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --R_change_interval 3 --sourcenum 3
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --R_change_interval 3 --sourcenum 4
+            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --R_change_interval 3 --sourcenum 5
+            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --R_change_interval 3 --sourcenum 6
+            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 5 --sche_step 18 --R_change_interval 3
         ) || (
             REM Append the ERRORLEVEL (PID) to the pids variable
             set "pids=!pids!!ERRORLEVEL!!"
