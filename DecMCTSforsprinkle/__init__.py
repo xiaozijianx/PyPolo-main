@@ -4,8 +4,8 @@ from .MaximumCoverageSpray import SAMaximumCoverageSpray
 from .NoSpray import NoSpray
 from .MCTSSpray import MCTSSpray
 from .SA_EffectOrientedGreedySpray import SAEffectOrientedGreedySpray
-from .Dec_MCTSSprinkle import DecMCTSSprinkle
 from .strategy import IStrategy
+from . import DecMCTS
 
 __all__ = [
     "SAEffectOrientedSelectiveSpray",
@@ -15,4 +15,5 @@ __all__ = [
     "MCTSSpray",
     "NoSpray",
     "IStrategy",
+    "DecMCTS",
 ]

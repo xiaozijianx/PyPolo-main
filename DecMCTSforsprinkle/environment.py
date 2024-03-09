@@ -1,0 +1,183 @@
+import random
+from enum import Enum
+
+import pygame
+import redis
+import ast
+from scipy import sparse
+from maze import Action
+import maze_gen
+from time import sleep, perf_counter
+from threading import Thread
+
+import decMCTS
+
+
+class Colour(Enum):
+    Black = (0, 0, 0)
+    Grey = (100, 100, 100)
+    White = (255, 255, 255)
+    Red = (168, 22, 0)
+    Blue = (22, 0, 168)
+    Green = (0, 168, 22)
+    Cyan = (0, 168, 168)
+    Yellow = (200, 200, 0)
+    Magenta = (168, 0, 168)
+    Orange = (200, 90, 0)
+    Purple = (100, 0, 168)
+    LightRed = (200, 100, 100)
+    LightBlue = (100, 100, 200)
+    LightGreen = (100, 200, 100)
+    LightCyan = (100, 200, 200)
+    LightYellow = (200, 200, 100)
+    LightMagenta = (200, 100, 200)
+    LightPurple = (168, 100, 255)
+    LightOrange = (255, 168, 100)
+    GoalGreen = (0, 255, 0)
+
+
+colour_order = [Colour.Red, Colour.Blue, Colour.Green, Colour.Cyan, Colour.Yellow, Colour.Magenta, Colour.Orange,
+                Colour.Purple, Colour.LightRed, Colour.LightBlue, Colour.LightGreen, Colour.LightCyan,
+                Colour.LightYellow, Colour.LightMagenta, Colour.LightOrange, Colour.LightPurple]
+
+
+class Environment():
+    def __init__(self, width, height, goal, num_robots, render_interval=0.5, seed=None):
+        self.r = redis.Redis(host='localhost', port=6379)
+        self.thread = None
+        self.width = width + 2
+        self.height = height + 2
+        self.walls = maze_gen.generate_maze(height, width, seed=seed)
+        self.goal = goal
+        self.render_interval = render_interval
+        self.timestep = 0
+        self.complete = False
+        self.robot_list = {}
+        self.robot_colors = {}
+        self.obss = {}
+        self.grid_size = 20
+        self.num_robots = num_robots
+
+        pygame.init()
+        self.gameDisplay = pygame.display.set_mode((self.width*self.grid_size, self.width*self.grid_size))
+        self.render()
+
+    def get_goal(self):
+        return self.goal
+
+    def add_robot(self, robot_id, start_loc, goal_loc):
+        '''
+        Add robot with start location start_loc, goal goal_loc and pass self as env
+        Add to self.robot_list
+        '''
+
+        self.robot_list[robot_id] = (start_loc, goal_loc)
+        self.robot_colors[robot_id] = colour_order[len(self.robot_list) - 1 % len(colour_order)]
+        print("robot_id: ", robot_id)
+        self.render()
+
+    def get_walls_from_loc(self, loc):
+        '''
+        return a dictionary of N,E,S,W and whether there
+        is a wall in that direction from loc
+        '''
+        x, y = loc
+        return {
+            Action.LEFT:    self.walls[y, x - 1] == 0,
+            Action.RIGHT:  self.walls[y, x + 1] == 0,
+            Action.UP:  self.walls[y - 1, x] == 0,
+            Action.DOWN: self.walls[y + 1, x] == 0
+        }
+
+    def render(self):
+        '''
+        render stuff
+        requires testing
+        '''
+        self.gameDisplay.fill(Colour.Grey.value)
+        print("Rendering...")
+        for path_y, path_x, _ in zip(*sparse.find(self.walls)):
+            rect = (
+                (path_x - 0.5) * self.grid_size,
+                (path_y - 0.5) * self.grid_size,
+                self.grid_size,
+                self.grid_size
+            )
+            pygame.draw.rect(self.gameDisplay, Colour.White.value, rect, width=0)
+        pygame.draw.rect(
+            self.gameDisplay,
+            Colour.GoalGreen.value,
+            (
+                (self.goal[0] - 0.5) * self.grid_size,
+                (self.goal[1] - 0.5) * self.grid_size,
+                self.grid_size,
+                self.grid_size
+            )
+            , width=0)
+
+        for robot_id, ((x, y), _) in self.robot_list.items():
+            pygame.draw.circle(surface=self.gameDisplay,
+                               color=self.robot_colors[robot_id].value,
+                               center=(x * self.grid_size,y*self.grid_size),
+                               radius=0.3 * self.grid_size)
+
+        obs_pos = [0, 0]
+        for robot_id in self.obss:
+            obs_pos[0] += 1
+            obs_pos[1] -= 1
+            if obs_pos[1] < 0:
+                obs_pos[1] = obs_pos[0]
+                obs_pos[0] = 0
+            for path_y, path_x, value in zip(*sparse.find(self.obss[robot_id])):
+                rect = (
+                    (path_x - 0.5 + obs_pos * self.width) * self.grid_size,
+                    (path_y - 0.5 + obs_pos * self.height) * self.grid_size,
+                    self.grid_size,
+                    self.grid_size
+                )
+                ispath = - value + 2
+                pygame.draw.rect(self.gameDisplay, (200*ispath, 200*ispath, 200*ispath), rect, width=0)
+
+        #pygame.display.update()
+
+    def update_obs(self, obs, robot_id):
+        self.obss[robot_id] = obs
+        self.render()
+
+    def update_loc(self, message):
+        '''
+        Callback function for robot locations
+        Update locations of robots for rendering
+        '''
+        channel = message['channel']
+        locmsg_str = message['data']
+        locmsg = ast.literal_eval(locmsg_str.decode())
+        
+        # 获取位置和机器人ID
+        x = locmsg[0]
+        y = locmsg[1]
+        robot_id = locmsg[2]
+
+        self.robot_list[robot_id] = ((x,y), self.robot_list[robot_id][1])
+        print("updated robot "+str(robot_id))
+        self.render()
+
+    def set_up_listener(self):
+        '''
+        Implement listener code, call to update_loc()
+        Implement timer listener at frequency 1/render_interval to call to render()
+        '''
+        p = self.r.pubsub()
+        for robot_id in self.robot_list.keys():
+            print("Added listener ","robot_loc_",robot_id)
+            # rospy.Subscriber('robot_loc_' + str(robot_id), Point, self.update_loc, robot_id)
+            p.subscribe(**{'robot_loc_' + str(robot_id): self.update_loc})
+        # 启动订阅线程
+        self.thread = p.run_in_thread(sleep_time=0.01)
+
+    def close_listener(self):
+        self.thread.stop()
+        p = self.r.pubsub()
+        p.unsubscribe()
+        p.close()
+
