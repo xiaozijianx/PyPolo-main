@@ -86,6 +86,18 @@ def parse_arguments(verbose=False):
                         type=float,
                         default=0.0,
                         help="naive effect_threshold")
+    parser.add_argument("--bound1",
+                        type=int,
+                        default=200,
+                        help="simulated annealing round for initual search")
+    parser.add_argument("--bound2",
+                        type=int,
+                        default=20,
+                        help="simulated annealing round for optimal search")
+    parser.add_argument("--bound3",
+                        type=int,
+                        default=100,
+                        help="simulated annealing round for later search")    
     parser.add_argument("--time_before_sche",
                         type=int,
                         default=5,

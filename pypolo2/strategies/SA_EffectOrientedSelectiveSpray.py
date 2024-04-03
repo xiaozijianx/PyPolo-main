@@ -363,7 +363,7 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
   return curr_context, sq_list
 
 # @PrintExecutionTime
-def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound, alpha):
+def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound1,bound2, alpha):
   # 洒水车规划算法，假设环境已知，以洒水收益微单目标进行长周期多动作规划
   # 计算当前的分数并储存
   sprayeffect_before = origin_context.CalculateSpraySQ()
@@ -378,8 +378,8 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound, alp
   Info_Temp = 1
   Spray_Temp = 50
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.8, 1 / 600)
-  context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = 600, object = 3, object_mi = object_mi)
+  k = math.pow(0.8, 1 / bound1)
+  context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 3, object_mi = object_mi)
 
   # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
   # ax.plot(sq_list_total+sq_list)
@@ -392,8 +392,8 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound, alp
   Info_Temp = 1
   Spray_Temp = 40
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 3, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound2)
+  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 3, object_mi = object_mi)
 
   # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
   # ax.plot(sq_list_total+sq_list)
@@ -406,8 +406,8 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound, alp
   Info_Temp = 1
   Spray_Temp = 200
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 4, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound2)
+  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
   
   # fig, axs = plt.subplots(2, 1, figsize=(8, 10))  # 5行4列的子图布局，可以根据需要调整大小
   # axs[0].plot(context.Setting.accept_rate)
@@ -424,8 +424,8 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound, alp
   Spray_Temp = 40
   # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 5, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound2)
+  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 5, object_mi = object_mi)
 
   # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
   # ax.plot(sq_list_total+sq_list)
@@ -436,7 +436,7 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound, alp
 
   return context, sq_list_total + sq_list
 
-def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound, alpha):
+def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound2, bound3, alpha):
   # 洒水车规划算法，假设环境已知，以洒水收益微单目标进行长周期多动作规划
   # 计算当前的分数并储存
   sprayeffect_before = origin_context.CalculateSpraySQ()
@@ -450,8 +450,8 @@ def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound, alp
   Info_Temp = 1
   Spray_Temp = 60
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.001, 1 / 100)
-  context, sq_list = SimulatedAnnealing(rng, origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = 100, object = 3, object_mi = object_mi)
+  k = math.pow(0.001, 1 / bound3)
+  context, sq_list = SimulatedAnnealing(rng, origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 3, object_mi = object_mi)
 
   # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
   # ax.plot(sq_list_total+sq_list)
@@ -464,8 +464,8 @@ def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound, alp
   Info_Temp = 1
   Spray_Temp = 200
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 4, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound2)
+  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
   
   # fig, axs = plt.subplots(2, 1, figsize=(8, 10))  # 5行4列的子图布局，可以根据需要调整大小
   # axs[0].plot(context.Setting.accept_rate)
@@ -482,8 +482,8 @@ def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound, alp
   Spray_Temp = 40
   # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 5, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound2)
+  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 5, object_mi = object_mi)
 
   # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
   # ax.plot(sq_list_total+sq_list)
@@ -566,10 +566,10 @@ class SAEffectOrientedSelectiveSpray(IStrategy):
           agent_init_position = np.array(agent_init_position)
           self.moving_context = GridMovingContext(agent_init_position, model, pred, allpoint, Setting)
           self.alpha = Setting.alpha
-          self.moving_context, sq_list_total = SimulatedAnnealingInitual(self.rng, self.moving_context, Setting.bound, self.alpha)
+          self.moving_context, sq_list_total = SimulatedAnnealingInitual(self.rng, self.moving_context, Setting.bound1, Setting.bound2, self.alpha)
         else:
           self.moving_context.adaptive_update(model, pred, allpoint, Setting)
-          self.moving_context, sq_list_total = SimulatedAnnealingProcess(self.rng, self.moving_context, Setting.bound, self.alpha)
+          self.moving_context, sq_list_total = SimulatedAnnealingProcess(self.rng, self.moving_context, Setting.bound2, Setting.bound3, self.alpha)
         
         #context中包含最后的结果
         policy_now = self.moving_context.policy_matrix.copy()
