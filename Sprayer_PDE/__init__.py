@@ -7,8 +7,13 @@ import itertools
 import json
 from scipy import interpolate
 from scipy.stats import multivariate_normal
+import os
+current_file = os.path.abspath(__file__)
+current_directory = os.path.dirname(current_file)
+json_path = os.path.join(current_directory, 'info2.json')
 
-f2 = open('Sprayer_PDE\info2.json', 'r')
+f2 = open(json_path, 'r')
+# f2 = open('.\info2.json', 'r')
 info_data = json.load(f2)
 sprayer_model_mean = [0.0, 0.0]
 
@@ -70,8 +75,10 @@ class DiffusionPDE_withR(pde.PDEBase):
         if int(t * 1 / hyper_dt) % int(1 / S_dt) == 0:
             # print("t")
             # print(t)
+            # 下面两行的作用：生成一个dataframe，每一行代表区域的一个点，第一列为固定时间
             data_result = itertools.product([t + self.t_start],range(self.grid_x),range(self.grid_y))
             data_result = pd.DataFrame([x for x in data_result])
+            # print(data_result)
             self.S_S = self.sprayer(I = data_result)
             self.S_matrix = np.zeros((self.grid_x, self.grid_y))
             i_count = 0
@@ -79,26 +86,15 @@ class DiffusionPDE_withR(pde.PDEBase):
                 for i_y in range(self.grid_y):
                     self.S_matrix[i_x][i_y] = self.S_S[i_count]
                     i_count += 1
+
+            # 替代算法
+            # self.S_matrix = np.array(self.S_S).reshape(self.grid_x, self.grid_y)
             self.S_data = lambda_S * np.multiply(np.clip(state.data, 0, 2 ** 12) ** n_s, self.S_matrix)
-            # print("state")
-            # print(state.data.max())
-            # print(state.data.min())
-            # print("S_matrix")
-            # print(self.S_matrix.max())
-            # print(self.S_matrix.min())
-            # print("S_data")
-            # print(self.S_data.max())
-            # print(self.S_data.min())
-            # self.S_data = lambda_S * (state.data ** 2) * self.S_matrix
             self.S = pde.ScalarField(grid = pde.UnitGrid([self.grid_x, self.grid_y]), data = self.S_data)
         
-        # print(self.S)
-        # print(self.S.data)
-        # S_field = state.grid
-        # S_field = pde.ScalarField(grid = state.grid, data = S_field)
         """ numpy implementation of the evolution equation """
         state_lapacian = state.laplace(bc=self.bc)
-        state_gradient = state.gradient(bc=self.bc)
+        # state_gradient = state.gradient(bc=self.bc)
         return (self.diffusivity * state_lapacian
                 + self.R - self.S - lambda_sed * (state ** 1))
 
@@ -106,6 +102,7 @@ class DiffusionPDE_withR(pde.PDEBase):
         data_sprayer_train = self.data_sprayer_train
         I.columns = ["time","x_I","y_I"]
         I = I.assign(S = pd.Series([0 for j in range(len(I.index))]).values)
+        # 对每个车分别循环
         for i in range(len(data_sprayer_train)):
             sprayer_z = pd.DataFrame(data_sprayer_train[i])
             # self.sprayer_z = sprayer_z

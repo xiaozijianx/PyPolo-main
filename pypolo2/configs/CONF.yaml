@@ -7,9 +7,9 @@ diffusivity_K: 1.0
 grid_x: 20
 grid_y: 20
 
-randomsource: True
-sourcenum: 3
-R_change_interval: 6
+randomsource: False
+sourcenum: 4
+R_change_interval: 50
 
 #time parameter
 time_co: 0.1 
@@ -21,9 +21,9 @@ noise_scale: 1.0
 
 # experiment parameter
 num_init_samples: 1
-max_num_samples: 48
+max_num_samples: 18
 sche_step: 18
-adaptive_step: 3
+adaptive_step: 18
 Env: 'Dynamic'
 effect_threshold: 0.0
 

@@ -85,7 +85,7 @@ class MCTSSpray(IStrategy):
                                     agent_number=test_number,
                                     pollution_distribute = pred)
 
-        player = MCTSConcurrentPlayer(policy_value_fn, n_playout=2000)
+        player = MCTSConcurrentPlayer(policy_value_fn, n_playout=Setting.bound1)
 
         # 搜索
         states = []

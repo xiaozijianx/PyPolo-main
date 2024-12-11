@@ -2,14 +2,18 @@ REM @echo off
 chcp 65001
 setlocal enabledelayedexpansion
 set "pids="
-set config=./Sprinkler_Scheduling/configs/CONF.yaml
+set config=./pypolo2/configs/CONF.yaml
 
 REM for seed in 0 3 7 11 13 15 18 20 32 42
 @REM for %%s in (7 11 18 20 25 36 42 50 60 72 80 85) do (
-for %%s in (1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 ) do (
-    for %%t in (EffectOrientedMCTSSpray) do (
+for %%s in (50 100 150 200 300 400 500 700 1000 1200) do (
+    for %%t in (EffectOrientedMCTSNonMyopicSpray) do (
         (
-            python .\main.py --config %config% --seed 0 --strategy_name %%t --sche_step 8 --adaptive_step 8 --bound1 %%s
+            python .\main.py --config %config% --seed 0 --strategy_name %%t --sche_step 18 --team_size 2 --adaptive_step 18 --bound1 %%s
+            python .\main.py --config %config% --seed 0 --strategy_name %%t --sche_step 18 --team_size 3 --adaptive_step 18 --bound1 %%s
+            python .\main.py --config %config% --seed 0 --strategy_name %%t --sche_step 18 --team_size 4 --adaptive_step 18 --bound1 %%s
+            python .\main.py --config %config% --seed 0 --strategy_name %%t --sche_step 18 --team_size 5 --adaptive_step 18 --bound1 %%s
+            python .\main.py --config %config% --seed 0 --strategy_name %%t --sche_step 18 --team_size 6 --adaptive_step 18 --bound1 %%s
             @REM python main.py --config %config% --seed %%s --strategy_name %%t --sche_step 8 --adaptive_step 8 --sourcenum 2
             @REM python main.py --config %config% --seed %%s --strategy_name %%t --sche_step 8 --adaptive_step 8 --sourcenum 3
             @REM python main.py --config %config% --seed %%s --strategy_name %%t --sche_step 8 --adaptive_step 8 --sourcenum 4

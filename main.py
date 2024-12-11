@@ -300,7 +300,7 @@ def main():
                 init_amplitude = args.amplitude, init_lengthscale = args.lengthscale, init_noise = args.init_noise,
                 lr_hyper = args.lr_hyper, lr_nn = args.lr_nn,
                 team_size = args.team_size, water_volume = args.water_volume, replenish_speed = args.replenish_speed,
-                max_num_samples = args.max_num_samples ,
+                max_num_samples = args.max_num_samples , bound1 = args.bound1, bound2 = args.bound2, bound3 = args.bound3,
                 alpha = args.alpha,
                 Strategy_Name = args.strategy_name,
                 sche_step = args.sche_step, adaptive_step = args.adaptive_step, Env = args.Env,
@@ -312,8 +312,9 @@ def main():
     
     # save directory
     # starttime = Setting.starttime.replace(' ', '-').replace(':', '-')
-    Setting.save_dir = '{}/{}/teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.team_size)
+    # Setting.save_dir = '{}/{}/teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.team_size)
     # Setting.save_dir = '{}/{}/numsource_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.sourcenum)
+    Setting.save_dir = '{}/{}/bound1_{}teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.bound1, Setting.team_size)
     # Setting.save_name = args.save_name
     evaluator = get_evaluator()
     logger = pypolo2.experiments.Logger(None, Setting)

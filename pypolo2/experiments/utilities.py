@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import os
 import pickle
-import pypolo2
 
 def seed_everything(Setting):
     random.seed(Setting.seed)

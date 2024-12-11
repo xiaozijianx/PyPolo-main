@@ -376,63 +376,14 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound1,bou
   # 然后进行综合规划
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
   Info_Temp = 1
-  Spray_Temp = 50
+  Spray_Temp = 100
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.8, 1 / bound1)
-  context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 3, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 20000])
-  # ax.set_title(f"sq_list_total")
-  # plt.tight_layout()
-  # plt.show()
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 20
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 3, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 25000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 50
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
-  
-  # fig, axs = plt.subplots(2, 1, figsize=(8, 10))  # 5行4列的子图布局，可以根据需要调整大小
-  # axs[0].plot(context.Setting.accept_rate)
-  # axs[1].plot(sq_list_total+sq_list)
-  # axs[0].set_ylim([-0.05, 1.05])
-  # axs[1].set_ylim([-10, 25000])
-  # axs[0].set_title(f"accept_prob")
-  # axs[1].set_title(f"sq_list_total")
-  # plt.tight_layout()
-  # plt.show()
-  
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 20
-  # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 5, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 15000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
+  k = math.pow(0.001, 1 / bound1)
+  # Spray_Temp = 50
+  # Temp = [Info_Temp, Spray_Temp]
+  # k = math.pow(0.8, 1 / bound1)
+  context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, 
+                                        initial_temp = Temp, k = k, bound = bound1, object = 5, object_mi = object_mi)
 
   return context, sq_list_total + sq_list
 
@@ -451,51 +402,14 @@ def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound2, bo
   Spray_Temp = 60
   Temp = [Info_Temp, Spray_Temp]
   k = math.pow(0.001, 1 / bound3)
-  context, sq_list = SimulatedAnnealing(rng, origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 3, object_mi = object_mi)
+  context, sq_list = SimulatedAnnealing(rng, origin_context, enough_info = enough_info, n_playout = single_playout, 
+                                        initial_temp = Temp, k = k, bound = bound3, object = 5, object_mi = object_mi)
 
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 20000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 200
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
-  
-  # fig, axs = plt.subplots(2, 1, figsize=(8, 10))  # 5行4列的子图布局，可以根据需要调整大小
-  # axs[0].plot(context.Setting.accept_rate)
-  # axs[1].plot(sq_list_total+sq_list)
-  # axs[0].set_ylim([-0.05, 1.05])
-  # axs[1].set_ylim([-10, 20000])
-  # axs[0].set_title(f"accept_prob")
-  # axs[1].set_title(f"sq_list_total")
-  # plt.tight_layout()
-  # plt.show()
-  
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 40
-  # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 5, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 20000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
 
   return context, sq_list_total + sq_list
 
 #定义SA算法包装
-class SAEffectOrientedSelectiveSpray(IStrategy):
+class SAEffectOrientedNonDecoupledSpray(IStrategy):
     """Informative planning based on Mutual informaiton and sprinkler effect on latttice map use SA algorithms."""
 
     def __init__(

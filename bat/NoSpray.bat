@@ -2,7 +2,7 @@ REM @echo off
 chcp 65001
 setlocal enabledelayedexpansion
 set "pids="
-set config=./pypolo2/configs/CONF.yaml
+set config=./Sprinkler_Scheduling/configs/CONF.yaml
 
 REM for seed in 0 3 7 11 13 15 18 20 32 42
 for %%s in (7 11 18 20 25 36 42 50 60 72 80 85) do (

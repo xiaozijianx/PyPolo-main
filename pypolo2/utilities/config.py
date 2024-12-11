@@ -11,11 +11,11 @@ class Config:
                  time_before_sche = 5, station_size = 1, sourcenum = 4, R_change_interval = 50,
                  init_amplitude = 1.0, init_lengthscale = 0.5, init_noise = 1.0,
                  lr_hyper = 0.01, lr_nn = 0.001,
-                 team_size = 4, water_volume=4, replenish_speed = 1,
-                 max_num_samples = 18, current_step = 0 ,bound1 = 200, bound2 = 20, bound3 = 100,
+                 team_size = 3, water_volume=4, replenish_speed = 1,
+                 max_num_samples = 24, current_step = 0 ,bound1 = 100, bound2 = 15, bound3 = 100,
                  alpha = [0.75,0.9,0.99,1.05,1.5],
                  Strategy_Name = "SA_OnlyonetimeMI_simpleeffect",
-                 sche_step = 8, adaptive_step = 8, Env = "Dynamic",
+                 sche_step = 8, adaptive_step = 3, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
         
         # 实验数据选择,污染源数目选择,森林灭火拓展试验专用
@@ -37,11 +37,13 @@ class Config:
         
         #source
         self.randomsource = False
-        self.sourcenum = sourcenum
+        # self.sourcenum = sourcenum
+        self.sourcenum = team_size
         self.R =  -3 * np.ones((grid_x, grid_y)) + 6 * np.random.random((grid_x, grid_y)) # initialize pollution resource map matrix
         self.R_change_interval = R_change_interval
         self.data_sprayer_train = [] 
-        self.RR = np.zeros((self.sourcenum, 3)).astype(int)
+        # self.RR = np.zeros((self.sourcenum, 3)).astype(int)
+        self.RR = np.zeros((6, 3)).astype(int)
         self.RR[0,0] = 17
         self.RR[0,1] = 3
         self.RR[0,2] = 60
@@ -54,11 +56,19 @@ class Config:
         self.RR[3,0] = 3
         self.RR[3,1] = 3
         self.RR[3,2] = 60
+        self.RR[4,0] = 3
+        self.RR[4,1] = 10
+        self.RR[4,2] = 60
+        self.RR[5,0] = 17
+        self.RR[5,1] = 10
+        self.RR[5,2] = 60
         self.RR = self.RR.astype(int)
-        self.R[self.RR[0,0],self.RR[0,1]] = self.RR[0,2]
-        self.R[self.RR[1,0],self.RR[1,1]] = self.RR[1,2]
-        self.R[self.RR[2,0],self.RR[2,1]] = self.RR[2,2]
-        self.R[self.RR[3,0],self.RR[3,1]] = self.RR[3,2]
+        # 根据车辆数决定污染源数量
+        for a in range(team_size):
+            self.R[self.RR[a,0],self.RR[a,1]] = self.RR[a,2]
+            # self.R[self.RR[1,0],self.RR[1,1]] = self.RR[1,2]
+            # self.R[self.RR[2,0],self.RR[2,1]] = self.RR[2,2]
+            # self.R[self.RR[3,0],self.RR[3,1]] = self.RR[3,2]
         self.sources = []# 疑似污染源
         # data_sprayer_train = []
         # time_range = 100

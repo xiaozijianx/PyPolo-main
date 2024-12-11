@@ -8,7 +8,7 @@ def parse_arguments(verbose=False):
     parser.add_argument("--config",
                         required=False,
                         is_config_file=True,
-                        default='./pypolo2/configs/CONF.yaml',
+                        default='./Sprinkler_Scheduling/configs/CONF.yaml',
                         help="Configuration file path.")
     
     # Experiment settings

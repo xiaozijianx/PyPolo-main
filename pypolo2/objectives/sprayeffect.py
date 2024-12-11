@@ -76,16 +76,18 @@ def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,e
         for i in range(candidates.shape[0]):
             effect = 0
             candidate_point = candidates[i]
-            for a in range(3):
-                for b in range(3):
+            for a in range(5):
+                for b in range(5):
                     c1 = int(candidate_point[0] - 1 + a)
                     c2 = int(candidate_point[1] - 1 + b)
                     c3 = int(candidate_point[2])
                     if c1 < extent[0] or c1 >= extent[1] or c2 < extent[2] or c2 >= extent[3]:
                         continue
                     else:
-                        if a == 1 and b == 1:
+                        if a == 2 and b == 2:
                             effect = effect + calculate_effect(mean[c1,c2])
+                        elif (a - 2)**2 + (b - 2)**2 <= 2:
+                            effect = effect + 0.7*calculate_effect(mean[c1,c2])
                         else:
                             effect = effect + 0.5*calculate_effect(mean[c1,c2])
             spray_effect_list.append(effect)      

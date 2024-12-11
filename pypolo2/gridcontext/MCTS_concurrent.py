@@ -31,7 +31,7 @@ class MCTSConCurrent(MCTS):
 # 每一个player都会实例化一个mcts，player不是指车辆，是一个玩游戏的上帝视角
 class MCTSConcurrentPlayer(object):
   """AI player based on MCTS"""
-  def __init__(self, policy_value_fn, c_puct=20000, n_playout=500):
+  def __init__(self, policy_value_fn, c_puct=20, n_playout=500):
     self.mcts = MCTSConCurrent(policy_value_fn, c_puct, n_playout)
 
   def set_player_ind(self, p):

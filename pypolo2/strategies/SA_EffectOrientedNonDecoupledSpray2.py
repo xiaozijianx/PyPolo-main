@@ -1,3 +1,4 @@
+# 更彻底的耦合，每个随机周期都同时会改变移动动作和洒水动作
 import copy
 import random
 import sys
@@ -226,16 +227,13 @@ def do_spray(context, agent, New_policy) -> GridMovingContext:
 # def SimulatedAnnealing(origin_mc_context: GridMovingContext, *, n_playout=10000, initial_temp=1, k=0.95, bound=100, min_temp= 0.001, mini_step=1):
 def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info = None, n_playout=10000, initial_temp=1, k=0.95, bound=100, min_temp= 0.001, 
                        mini_step=1, object = 1, object_mi = 50):
-  #注意，这里的n_playout与singleplayou
+  #注意，这里的n_playout与singleplayout
   sq_list = []
   curr_turns = 0
   curr_k = 1
-  # try:
   Temp = initial_temp
   curr_context = copy.deepcopy(origin_mc_context)
   curr_context.Setting.accept_rate = []
-  # seed = curr_context.Setting.seed
-  # random.seed(seed)
   while(curr_turns < bound):
     iters = 0
     curr_turns += 1
@@ -244,12 +242,6 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
       curr_k = k * curr_k
     while(iters < n_playout):
       iters += 1
-      if object == 3:
-        rand_category = 0
-      elif object == 4:
-        rand_category = 1
-      elif object == 5:
-        rand_category = rng.randint(0, 2)
       rand_spray_category = rng.randint(0, 3)
       rand_agent = rng.randint(0, curr_context.GetAgentNumber())
       rand_time = rng.randint(0, curr_context.GetMaxTime())
@@ -266,97 +258,78 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
       rand_action = rng.randint(0, curr_context.GetPossibleActions())
       agent_position_list = None
       New_policy = None
-      if rand_category == 0:
-        # 调整位置
-        agent_position_list, New_policy = try_move(curr_context, rand_agent, rand_time, rand_action)
-      else:
-        # 调整洒水动作
-        if rand_spray_category == 0:
-          New_policy = try_spray0(rng,curr_context, rand_agent, rand_time1)
-        elif rand_spray_category == 1:
-          New_policy = try_spray1(rng,curr_context, rand_agent, rand_time2) 
-        elif rand_spray_category == 2:
-          New_policy = try_spray2(rng,curr_context, rand_agent, rand_time2)
-      
-      # 分类执行
-      # 根据随机选择的动作操作智能体轨迹
+      # if rand_category == 0:
+      # 先尝试调整移动，因为移动不会影响洒水
+      agent_position_list, New_policy = try_move(curr_context, rand_agent, rand_time, rand_action)
       new_mc_context = copy.deepcopy(curr_context)
-      # print(rand_category,rand_spray_category)
-      if rand_category == 0:
-        # 调整位置
-        if(agent_position_list is None):
-          continue
+      # 调整位置
+      if(agent_position_list is not None):
         do_move(new_mc_context, rand_agent, rand_time, New_policy, agent_position_list)
-      elif rand_category == 1:
-        # 调整洒水
+
+      New_policy = None
+      # 再调整洒水
+      if rand_spray_category == 0:
+        New_policy = try_spray0(rng,new_mc_context, rand_agent, rand_time1)
+      elif rand_spray_category == 1:
+        New_policy = try_spray1(rng,new_mc_context, rand_agent, rand_time2) 
+      elif rand_spray_category == 2:
+        New_policy = try_spray2(rng,new_mc_context, rand_agent, rand_time2)
+
+      new_mc_context2 = copy.deepcopy(new_mc_context)
+      if (agent_position_list is None):
+        # 如果没移动，不洒水则跳出
         if rand_spray_category == 0:
           if(New_policy is None):
             continue
-          do_spray(new_mc_context, rand_agent, New_policy)  
+          do_spray(new_mc_context2, rand_agent, New_policy)  
         elif rand_spray_category == 1:
           if(New_policy is None):
             continue
-          do_spray(new_mc_context, rand_agent, New_policy)  
+          do_spray(new_mc_context2, rand_agent, New_policy)  
         elif rand_spray_category == 2:
           if(New_policy is None):
             continue
-          do_spray(new_mc_context, rand_agent, New_policy)  
+          do_spray(new_mc_context2, rand_agent, New_policy)  
+      else:
+        if rand_spray_category == 0:
+          if(New_policy is not None):
+            do_spray(new_mc_context2, rand_agent, New_policy)
+        elif rand_spray_category == 1:
+          if(New_policy is not None):
+            do_spray(new_mc_context2, rand_agent, New_policy)  
+        elif rand_spray_category == 2:
+          if(New_policy is not None):
+            do_spray(new_mc_context2, rand_agent, New_policy) 
 
-      # 仅使用信息目标作为接收标准
-      
-      if object == 1:
-        MI_before = curr_context.CalculateMISQ()
-        MI_after = new_mc_context.CalculateMISQ()
-        delta_MI = MI_after - MI_before
-        if(delta_MI >= 0):
-          curr_context = new_mc_context
-        else:
-          # accept by chance
-          accept_prob = np.exp(delta_MI / (curr_k * Temp))
-          if(rng.random() < accept_prob):
-            curr_context = new_mc_context
-      # 仅使用洒水目标作为接收标准
-      elif object == 2:
-        sprayeffect_before, _ = curr_context.calculate_Sprayscores_foreveryvehicle()
-        sprayeffect_after, _ = new_mc_context.calculate_Sprayscores_foreveryvehicle()
-        delta_sprayeffect = sprayeffect_after - sprayeffect_before
-        if(delta_sprayeffect >= 0):
-          curr_context = new_mc_context
-        else:
-          # accept by chance
-          accept_prob = np.exp(delta_sprayeffect / (curr_k * Temp))
-          if(rng.random() < accept_prob):
-            curr_context = new_mc_context
-     
       # 无探索
-      elif object == 3:
+      if object == 3:
         sprayeffect_before = curr_context.CalculateSpraySQ()
-        sprayeffect_after = new_mc_context.CalculateSpraySQ()
+        sprayeffect_after = new_mc_context2.CalculateSpraySQ()
         # if sprayeffect_after > 300:
         #   print(sprayeffect_after)
         delta_sprayeffect = sprayeffect_after - sprayeffect_before
         if delta_sprayeffect >= 0:
-          curr_context = new_mc_context
+          curr_context = new_mc_context2
           curr_context.Setting.accept_rate.append(1)
         elif delta_sprayeffect < 0:
           accept_prob = np.exp(delta_sprayeffect / (curr_k * Temp[1]))
           if(rng.random() < accept_prob):
-            curr_context = new_mc_context
+            curr_context = new_mc_context2
           curr_context.Setting.accept_rate.append(accept_prob)
           
       elif object == 4 or object == 5:
         sprayeffect_before = curr_context.CalculateSpraySQ(method = 2)
-        sprayeffect_after = new_mc_context.CalculateSpraySQ(method = 2)
+        sprayeffect_after = new_mc_context2.CalculateSpraySQ(method = 2)
         # if sprayeffect_after > 300:
         #   print(sprayeffect_after)
         delta_sprayeffect = sprayeffect_after - sprayeffect_before
         if delta_sprayeffect >= 0:
-          curr_context = new_mc_context
+          curr_context = new_mc_context2
           curr_context.Setting.accept_rate.append(1)
         elif delta_sprayeffect < 0:
           accept_prob = np.exp(delta_sprayeffect / (curr_k * Temp[1]))
           if(rng.random() < accept_prob):
-            curr_context = new_mc_context
+            curr_context = new_mc_context2
           curr_context.Setting.accept_rate.append(accept_prob)
     sprayeffect_after = curr_context.CalculateSpraySQ(method = 2)
     sq_list.append(sprayeffect_after)
@@ -376,63 +349,14 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext, bound1,bou
   # 然后进行综合规划
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
   Info_Temp = 1
-  Spray_Temp = 50
+  Spray_Temp = 100
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.8, 1 / bound1)
-  context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 3, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 20000])
-  # ax.set_title(f"sq_list_total")
-  # plt.tight_layout()
-  # plt.show()
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 20
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 3, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 25000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 50
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
-  
-  # fig, axs = plt.subplots(2, 1, figsize=(8, 10))  # 5行4列的子图布局，可以根据需要调整大小
-  # axs[0].plot(context.Setting.accept_rate)
-  # axs[1].plot(sq_list_total+sq_list)
-  # axs[0].set_ylim([-0.05, 1.05])
-  # axs[1].set_ylim([-10, 25000])
-  # axs[0].set_title(f"accept_prob")
-  # axs[1].set_title(f"sq_list_total")
-  # plt.tight_layout()
-  # plt.show()
-  
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 20
-  # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 5, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 15000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
+  k = math.pow(0.001, 1 / bound1)
+  # Spray_Temp = 50
+  # Temp = [Info_Temp, Spray_Temp]
+  # k = math.pow(0.8, 1 / bound1)
+  context, sq_list = SimulatedAnnealing(rng,origin_context, enough_info = enough_info, n_playout = single_playout, 
+                                        initial_temp = Temp, k = k, bound = bound1, object = 5, object_mi = object_mi)
 
   return context, sq_list_total + sq_list
 
@@ -451,51 +375,14 @@ def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound2, bo
   Spray_Temp = 60
   Temp = [Info_Temp, Spray_Temp]
   k = math.pow(0.001, 1 / bound3)
-  context, sq_list = SimulatedAnnealing(rng, origin_context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 3, object_mi = object_mi)
+  context, sq_list = SimulatedAnnealing(rng, origin_context, enough_info = enough_info, n_playout = single_playout, 
+                                        initial_temp = Temp, k = k, bound = bound3, object = 5, object_mi = object_mi)
 
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 20000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 200
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
-  
-  # fig, axs = plt.subplots(2, 1, figsize=(8, 10))  # 5行4列的子图布局，可以根据需要调整大小
-  # axs[0].plot(context.Setting.accept_rate)
-  # axs[1].plot(sq_list_total+sq_list)
-  # axs[0].set_ylim([-0.05, 1.05])
-  # axs[1].set_ylim([-10, 20000])
-  # axs[0].set_title(f"accept_prob")
-  # axs[1].set_title(f"sq_list_total")
-  # plt.tight_layout()
-  # plt.show()
-  
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 1
-  Spray_Temp = 40
-  # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, enough_info = enough_info, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 5, object_mi = object_mi)
-
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 20000])
-  # ax.set_title(f"sq_list")
-  # plt.tight_layout()
-  # plt.show()
 
   return context, sq_list_total + sq_list
 
 #定义SA算法包装
-class SAEffectOrientedSelectiveSpray(IStrategy):
+class SAEffectOrientedNonDecoupledSpray2(IStrategy):
     """Informative planning based on Mutual informaiton and sprinkler effect on latttice map use SA algorithms."""
 
     def __init__(

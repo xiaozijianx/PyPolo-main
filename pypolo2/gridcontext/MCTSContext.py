@@ -115,13 +115,13 @@ class MCTSContext():
                         effect_rate = 1
                         if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
                             if a == 2 and b == 2:
-                                spray_effect = spray_effect + spray_done[i_player,r,c]*0.15*(8-t)*calculate_effect(pollution_distribute[r,c])
+                                spray_effect = spray_effect + spray_done[i_player,r,c]*0.15*(12-t)*calculate_effect(pollution_distribute[r,c])
                                 pollution_distribute[r,c] = pollution_distribute[r,c] - effect_rate*calculate_effect(pollution_distribute[r,c])
                             elif (a - 2)**2 + (b - 2)**2 <= 2:
-                                spray_effect = spray_effect + spray_done[i_player,r,c]*0.7*0.15*(8-t)*calculate_effect(pollution_distribute[r,c])
+                                spray_effect = spray_effect + spray_done[i_player,r,c]*0.7*0.15*(12-t)*calculate_effect(pollution_distribute[r,c])
                                 pollution_distribute[r,c] = pollution_distribute[r,c] - 0.7*effect_rate*calculate_effect(pollution_distribute[r,c])
                             else:
-                                spray_effect = spray_effect + spray_done[i_player,r,c]*0.5*0.15*(8-t)*calculate_effect(pollution_distribute[r,c])
+                                spray_effect = spray_effect + spray_done[i_player,r,c]*0.5*0.15*(12-t)*calculate_effect(pollution_distribute[r,c])
                                 pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
                 agent_position[i_player] = new_position     
         return spray_effect

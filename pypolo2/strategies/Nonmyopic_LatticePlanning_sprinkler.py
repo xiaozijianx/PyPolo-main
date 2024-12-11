@@ -83,6 +83,8 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
         
     def get(self, model: IModel, Setting, pred) -> np.ndarray:
         # predict model
+        # 获取在当前时刻污染分布下，在每个点洒水时的效果。
+        # 这种算法将每个点独立考虑，而没有考虑其收益之间的影响。
         allstate_list_forpred = []
         for i in range (self.task_extent[0],self.task_extent[1]):
             for j in range (self.task_extent[2],self.task_extent[3]):
@@ -101,8 +103,8 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
         result = dict()
         for id, vehicle in self.vehicle_team.items():
             #change the normaliz method
-            normed_effect = sprayeffect_all / 100.0
-            # normed_effect = (sprayeffect_all - sprayeffect_all.min()) / sprayeffect_all.ptp()
+            # normed_effect = sprayeffect_all / 100.0
+            normed_effect = (sprayeffect_all - sprayeffect_all.min()) / sprayeffect_all.ptp()
             # trans to matrix form
             sprayeffect = np.zeros((self.task_extent[1]-self.task_extent[0],self.task_extent[3]-self.task_extent[2]))
             for i in range (self.task_extent[0],self.task_extent[1]):
@@ -180,9 +182,9 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
                             continue
                         if m == 1 and n == 1:
                             if spray_flag[i,0] == True:
-                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.2))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
+                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.5))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
                         else:
                             if spray_flag[i,0] == True:
-                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.1))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
+                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.3))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
         print(result)               
         return result
