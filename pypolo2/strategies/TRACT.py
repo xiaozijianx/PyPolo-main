@@ -222,6 +222,7 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
       curr_k = k * curr_k
     while(iters < n_playout):
         iters += 1
+        # rand_category = 0
         rand_spray_category = rng.randint(0, 3)
         # select one agent
         rand_agent = rng.randint(0, curr_context.GetAgentNumber())
@@ -249,39 +250,39 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
         if(agent_position_list is not None):
             do_move(new_mc_context, rand_agent, rand_time, New_policy, agent_position_list)
 
-        New_policy = None
-        if rand_spray_category == 0:
-            New_policy = try_spray0(rng,new_mc_context, rand_agent, rand_time1)
-        elif rand_spray_category == 1:
-            New_policy = try_spray1(rng,new_mc_context, rand_agent, rand_time2) 
-        elif rand_spray_category == 2:
-            New_policy = try_spray2(rng,new_mc_context, rand_agent, rand_time2)
+        # New_policy = None
+        # if rand_spray_category == 0:
+        #     New_policy = try_spray0(rng,new_mc_context, rand_agent, rand_time1)
+        # elif rand_spray_category == 1:
+        #     New_policy = try_spray1(rng,new_mc_context, rand_agent, rand_time2) 
+        # elif rand_spray_category == 2:
+        #     New_policy = try_spray2(rng,new_mc_context, rand_agent, rand_time2)
 
         new_mc_context2 = copy.deepcopy(new_mc_context)
-        if (agent_position_list is None):
-            # 如果没移动，不洒水则跳出
-            if rand_spray_category == 0:
-                if(New_policy is None):
-                    continue
-                do_spray(new_mc_context2, rand_agent, New_policy)  
-            elif rand_spray_category == 1:
-                if(New_policy is None):
-                    continue
-                do_spray(new_mc_context2, rand_agent, New_policy)  
-            elif rand_spray_category == 2:
-                if(New_policy is None):
-                    continue
-                do_spray(new_mc_context2, rand_agent, New_policy)  
-        else:
-            if rand_spray_category == 0:
-                if(New_policy is not None):
-                    do_spray(new_mc_context2, rand_agent, New_policy)
-            elif rand_spray_category == 1:
-                if(New_policy is not None):
-                    do_spray(new_mc_context2, rand_agent, New_policy)  
-            elif rand_spray_category == 2:
-                if(New_policy is not None):
-                    do_spray(new_mc_context2, rand_agent, New_policy) 
+        # if (agent_position_list is None):
+        #     # 如果没移动，不洒水则跳出
+        #     if rand_spray_category == 0:
+        #         if(New_policy is None):
+        #             continue
+        #         do_spray(new_mc_context2, rand_agent, New_policy)  
+        #     elif rand_spray_category == 1:
+        #         if(New_policy is None):
+        #             continue
+        #         do_spray(new_mc_context2, rand_agent, New_policy)  
+        #     elif rand_spray_category == 2:
+        #         if(New_policy is None):
+        #             continue
+        #         do_spray(new_mc_context2, rand_agent, New_policy)  
+        # else:
+        #     if rand_spray_category == 0:
+        #         if(New_policy is not None):
+        #             do_spray(new_mc_context2, rand_agent, New_policy)
+        #     elif rand_spray_category == 1:
+        #         if(New_policy is not None):
+        #             do_spray(new_mc_context2, rand_agent, New_policy)  
+        #     elif rand_spray_category == 2:
+        #         if(New_policy is not None):
+        #             do_spray(new_mc_context2, rand_agent, New_policy) 
 
         # 无探索
         sprayeffect_before = curr_context.CalculateSpraySQ(method = 2)

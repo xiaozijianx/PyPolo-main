@@ -93,6 +93,13 @@ class SPRINKLER_REPLENISHANYWHERE(IRobot):
             self.goal_spray_flag = self.goal_spray_flag[1:]
         else:
             print('without_goals')
+    
+    def jam(self) -> None:
+        """
+        Update state, and goal states.
+
+        """
+        self.spray_flag = 0
             
     def control(self):
         return None

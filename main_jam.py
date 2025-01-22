@@ -18,50 +18,8 @@ def get_multi_robots(Setting):
 
 
 def get_strategy(rng, Setting, vehicle_team):
-    if Setting.strategy_name == "EffectOrientedSelectiveSpray":
-        strategy = pypolo2.strategies.SAEffectOrientedSelectiveSpray(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "MaximumCoverageSpray":
-        strategy = pypolo2.strategies.SAMaximumCoverageSpray(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "NoSpray":
-        strategy = pypolo2.strategies.NoSpray(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "EffectOrientedGreedySpray":
-        strategy = pypolo2.strategies.SAEffectOrientedGreedySpray(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "NonmyonicLatticeSpray":
-        strategy = pypolo2.strategies.NonMyopicLatticePlanningSprinkler(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "EffectOrientedMCTSSpray":
-        strategy = pypolo2.strategies.MCTSSpray(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "TRACT":
-        strategy = pypolo2.strategies.TRACT(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "EffectOrientedMCTSSpray":
-        strategy = pypolo2.strategies.MCTSSpray(
+    if Setting.strategy_name == "Traffic_jam":
+        strategy = pypolo2.strategies.SAEffectOrientedSelectiveSpray_Traffic(
                 task_extent=Setting.task_extent,
                 rng=rng,
                 vehicle_team=vehicle_team,
@@ -108,15 +66,16 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
                 env_list.append(Setting.env[i,j])
         allpoint = np.array(allpoint_list)
         env = np.array(env_list)
-        mean, _ = model(allpoint)
-        sprayeffect_all = pypolo2.objectives.sprayeffect.spray_effect(allpoint, allpoint, mean, Setting.task_extent).ravel()
-        prior_diag_std, poste_diag_std, _, _ = model.prior_poste(allpoint)
-        hprior = pypolo2.objectives.entropy.gaussian_entropy(prior_diag_std.ravel())
-        hposterior = pypolo2.objectives.entropy.gaussian_entropy(poste_diag_std.ravel())
-        mi_all = hprior - hposterior
-        if np.any(mi_all < 0.0):
-            print(mi_all.ravel())
-            raise ValueError("Predictive MI < 0.0!")
+
+        # mean, _ = model(allpoint)
+        # sprayeffect_all = pypolo2.objectives.sprayeffect.spray_effect(allpoint, allpoint, mean, Setting.task_extent).ravel()
+        # prior_diag_std, poste_diag_std, _, _ = model.prior_poste(allpoint)
+        # hprior = pypolo2.objectives.entropy.gaussian_entropy(prior_diag_std.ravel())
+        # hposterior = pypolo2.objectives.entropy.gaussian_entropy(poste_diag_std.ravel())
+        # mi_all = hprior - hposterior
+        # if np.any(mi_all < 0.0):
+        #     print(mi_all.ravel())
+        #     raise ValueError("Predictive MI < 0.0!")
         
         sprayeffect_all = pypolo2.objectives.sprayeffect.spray_effect(allpoint, allpoint, env, Setting.task_extent).ravel()
         MI_information = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
@@ -124,7 +83,8 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
         computed_effect = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
         for i in range (Setting.task_extent[0],Setting.task_extent[1]):
             for j in range (Setting.task_extent[2],Setting.task_extent[3]):
-                MI_information[i,j] = mi_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
+                # MI_information[i,j] = mi_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
+                MI_information[i,j] = Setting.Traffic[i,j]
                 observed_env[i,j] = Setting.env[i,j]
                 computed_effect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
                 
@@ -132,6 +92,21 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
         
         # scheduling and update agent goals ###################################################
         if adaptive_step >= Setting.adaptive_step:
+            # update traffic         
+            numbers = rng.randint(0, 2, size=Setting.Traffic_jam_number * 2)
+            pairs = rng.choice(numbers, size=(Setting.Traffic_jam_number, 2), replace=False)
+            for i in range(Setting.Traffic_jam_number):
+                number = rng.randint(60, 100, size=1)
+                if Setting.Traffic_jam[i,0]+pairs[i,0]-1 < Setting.grid_x-1 and Setting.Traffic_jam[i,0] + pairs[i,0] - 1 >=0:
+                    Setting.Traffic_jam[i,0] = int(Setting.Traffic_jam[i,0]+pairs[i,0]-1)
+                if Setting.Traffic_jam[i,1]+pairs[i,1]-1 < Setting.grid_y-1 and Setting.Traffic_jam[i,1] + pairs[i,1] - 1 >=0:
+                    Setting.Traffic_jam[i,1] = int(Setting.Traffic_jam[i,1]+pairs[i,1]-1)
+                Setting.Traffic_jam[i,2] = number
+            
+            Setting.Traffic = 5 * np.random.random((Setting.grid_x, Setting.grid_y))
+            for i in range(Setting.Traffic_jam_number):
+                Setting.Traffic[Setting.Traffic_jam[i,0],Setting.Traffic_jam[i,1]] = Setting.Traffic_jam[i,2]
+
             start = tm.time()
             result = Setting.strategy.get(model = model, Setting = Setting, pred = observed_env)
             adaptive_step = 0
@@ -140,6 +115,7 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
             end = tm.time()
             print('search_time')
             print(end-start)    
+            Setting.jam_time = np.zeros(Setting.team_size).astype(int)
             
         # calculate metrix and save 
         coverage, mean_airpollution, max_airpollution = evaluator.eval_results(Setting.env, Setting.task_extent, vehicle_team)
@@ -151,13 +127,10 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
             change_step = 0
             if Setting.randomsource == True:
                 # gengerate two set of random numbers for source locations
-                numbers = rng.randint(0, 5, size=Setting.sourcenum * 2)
+                numbers = rng.randint(0, 4, size=Setting.sourcenum * 2)
                 pairs = rng.choice(numbers, size=(Setting.sourcenum, 2), replace=False)
                 for i in range(Setting.sourcenum):
                     number = rng.randint(50, 70, size=1)
-                    # number= 200
-                    # Setting.RR[i,0] = int(pairs[i,0])
-                    # Setting.RR[i,1] = int(pairs[i,1])
                     if Setting.RR[i,0]+pairs[i,0]-2 < Setting.grid_x-1 and Setting.RR[i,0] + pairs[i,0] - 2 >=0:
                         Setting.RR[i,0] = int(Setting.RR[i,0]+pairs[i,0]-2)
                     if Setting.RR[i,1]+pairs[i,1]-2 < Setting.grid_y-1 and Setting.RR[i,1] + pairs[i,1] - 2 >=0:
@@ -165,11 +138,8 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
                     Setting.RR[i,2] = number
                 tstart = current_step
 
-        s = 1
         for i in range(Setting.sourcenum):
-             Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
-        # import sys
-        # sys.exit()
+             Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = Setting.RR[i,2]
         
         # 执行规划结果并推进仿真环境
         # 计算无洒水时的环境分布，推进表步长为1分钟
@@ -181,7 +151,24 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
         x_new = []
         y_new = []
         for id, vehicle in vehicle_team.items():
-            vehicle.update()
+            # 首先判断车辆是否进入了堵车位置，如果进入了则概率执行下一个动作。
+            last_state = vehicle.state.copy().reshape(1, -1)
+            jam_flag = 0
+            for i in range(Setting.Traffic_jam_number):
+                if last_state[0,0] == Setting.Traffic_jam[i,0] and last_state[0,1] == Setting.Traffic_jam[i,1]:
+                    print("vehicle in jam")
+                    iii = rng.randint(0, 100)
+                    print(iii)
+                    print(Setting.Traffic_jam[i])
+                    if iii <= Setting.Traffic_jam[i,2]:
+                        vehicle.jam()
+                        Setting.jam_time[id-1] = Setting.jam_time[id-1] + 1
+                        jam_flag = 1
+                        break
+                    
+            if jam_flag == 0:
+                vehicle.update()
+
             current_state = vehicle.state.copy().reshape(1, -1)
             x_new.append(current_state)
             y_new.append(sensor.sense(current_state, rng).reshape(-1, 1))
@@ -259,10 +246,22 @@ def Set_initual_data(rng,Setting,sensor):
             Setting.RR[i,1] = int(pairs[i,1])
             Setting.RR[i,2] = number
 
-    s = 1
     Setting.R =  -3 * np.ones((Setting.grid_x, Setting.grid_y)) + 6 * rng.random((Setting.grid_x, Setting.grid_y))
     for i in range(Setting.sourcenum):
-         Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
+         Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = Setting.RR[i,2]
+
+    # traffic jam initial
+    numbers = rng.randint(0, 19, size=Setting.Traffic_jam_number * 2)
+    pairs = rng.choice(numbers, size=(Setting.Traffic_jam_number, 2), replace=False)
+    for i in range(Setting.Traffic_jam_number):
+        number = rng.randint(60, 100, size=1)
+        Setting.Traffic_jam[i,0] = int(pairs[i,0])
+        Setting.Traffic_jam[i,1] = int(pairs[i,1])
+        Setting.Traffic_jam[i,2] = number
+
+    Setting.Traffic = 5 * np.random.random((Setting.grid_x, Setting.grid_y))
+    for i in range(Setting.Traffic_jam_number):
+            Setting.Traffic[Setting.Traffic_jam[i,0],Setting.Traffic_jam[i,1]] = Setting.Traffic_jam[i,2]
             
     env_model = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
                  initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = 0) # build model
@@ -304,7 +303,7 @@ def Set_initual_data(rng,Setting,sensor):
 
 def main():
     args = pypolo2.experiments.argparser.parse_arguments()
-    print(args.sourcenum)
+    
     Setting = pypolo2.utilities.Config(root_dir = args.root_dir, save_name = args.save_name,
                 diffusivity_K = args.diffusivity_K, grid_x = args.grid_x, grid_y = args.grid_y, time_co = args.time_co, delta_t = args.delta_t,
                 sensing_rate = args.sensing_rate, noise_scale = args.noise_scale, num_init_samples = args.num_init_samples, seed = args.seed,
@@ -325,7 +324,6 @@ def main():
     # save directory
     # starttime = Setting.starttime.replace(' ', '-').replace(':', '-')
     # Setting.save_dir = '{}/{}/teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.team_size)
-    # print(Setting.sourcenum)
     Setting.save_dir = '{}/{}/numsource_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.sourcenum)
     # Setting.save_dir = '{}/{}/bound1_{}teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.bound1, Setting.team_size)
     # Setting.save_name = args.save_name

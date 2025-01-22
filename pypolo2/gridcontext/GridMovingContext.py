@@ -175,7 +175,8 @@ class GridMovingContext():
                     
       return spray_effect
     elif method == 2:
-      #calcullate spray effcet
+      # calcullate spray effcet
+      # 该方法在补水时将占用空间还原
       spray_effect = 0
       curr_trace_set = self.curr_trace_set.copy()
       pollution_distribute = self.pollution_distribute.copy()
@@ -219,7 +220,125 @@ class GridMovingContext():
                     pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
                     for m in range(self.agent_number):
                       if m != i and spray_done[i,r,c] == 1:
-                        spray_done[m,r,c] = 0.4      
+                        spray_done[m,r,c] = 0.4     
+
+          if self.policy_matrix[i, j, 2] == -1:
+            for m in range(pollution_distribute.shape[0]):
+              for n in range(pollution_distribute.shape[1]):
+                if spray_done[i,m,n] == 1:     
+                  spray_done[:,m,n] = 1
+      return spray_effect
+    # for jam situation
+    elif method == 3:
+      #calcullate spray effcet
+      spray_effect = 0
+      curr_trace_set = self.curr_trace_set.copy()
+      pollution_distribute = self.pollution_distribute.copy()
+      spray_done = np.ones((self.agent_number,pollution_distribute.shape[0],pollution_distribute.shape[1]))
+      for j in range(self.time):  
+        spray_area = []
+        for i in range(self.agent_number):
+          # 先判断是否进入了拥堵区域
+          r0 = curr_trace_set[i, j, 0]
+          c0 = curr_trace_set[i, j, 1]
+          jam_flag = 0
+          for jam_aera in range(self.Setting.Traffic_jam_number):
+            if r0 == self.Setting.Traffic_jam[jam_aera,0] and c0 == self.Setting.Traffic_jam[jam_aera,1]:
+              spray_effect = spray_effect - self.Setting.Traffic_jam[jam_aera,2] * 10 
+              jam_flag = 1
+              break
+
+          if self.policy_matrix[i, j, 2] == 1 and jam_flag == 0:
+            # r0 = curr_trace_set[i, j, 0]
+            # c0 = curr_trace_set[i, j, 1]
+            for a in range(5):
+              for b in range(5):
+                r = int(r0 - 2 + a) 
+                c = int(c0 - 2 + b)
+                effect_rate = 1
+                # 判断该区域是否为污染源区域
+                # self.Setting.sources
+                for n in range(len(self.Setting.sources)):
+                  if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
+                    effect_rate = 0.5
+                    break
+                
+                if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                  if a == 2 and b == 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.1
+                  elif (a - 2)**2 + (b - 2)**2 <= 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.7*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.7*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.3
+                  else:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.5*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.4
+                    
+      return spray_effect
+    elif method == 4:
+      # calcullate spray effcet
+      # 该方法在补水时将占用空间还原
+      spray_effect = 0
+      curr_trace_set = self.curr_trace_set.copy()
+      pollution_distribute = self.pollution_distribute.copy()
+      spray_done = np.ones((self.agent_number,pollution_distribute.shape[0],pollution_distribute.shape[1]))
+      for j in range(self.time):  
+        spray_area = []
+        for i in range(self.agent_number):
+          # 先判断是否进入了拥堵区域
+          r0 = curr_trace_set[i, j, 0]
+          c0 = curr_trace_set[i, j, 1]
+          jam_flag = 0
+          for jam_aera in range(self.Setting.Traffic_jam_number):
+            if r0 == self.Setting.Traffic_jam[jam_aera,0] and c0 == self.Setting.Traffic_jam[jam_aera,1]:
+              spray_effect = spray_effect - self.Setting.Traffic_jam[jam_aera,2] * 10 
+              jam_flag = 1
+              break
+
+          if self.policy_matrix[i, j, 2] == 1 and jam_flag == 0:
+            # r0 = curr_trace_set[i, j, 0]
+            # c0 = curr_trace_set[i, j, 1]
+            for a in range(5):
+              for b in range(5):
+                r = int(r0 - 2 + a) 
+                c = int(c0 - 2 + b)
+                effect_rate = 1
+                # 判断该区域是否为污染源区域
+                # self.Setting.sources
+                for n in range(len(self.Setting.sources)):
+                  if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
+                    effect_rate = 0.5
+                    break
+                
+                if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
+                  if a == 2 and b == 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.1
+                  elif (a - 2)**2 + (b - 2)**2 <= 2:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.7*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.7*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.3
+                  else:
+                    spray_effect = spray_effect + spray_done[i,r,c]*0.5*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
+                    pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
+                    for m in range(self.agent_number):
+                      if m != i and spray_done[i,r,c] == 1:
+                        spray_done[m,r,c] = 0.4     
+
           if self.policy_matrix[i, j, 2] == -1:
             for m in range(pollution_distribute.shape[0]):
               for n in range(pollution_distribute.shape[1]):
@@ -571,6 +690,117 @@ class GridMovingContext():
             = self.curr_trace_set[j,self.time - adaptive_step + i, 2] + self.Setting.replenish_speed
           self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co
     
+    #当前轨迹所覆盖矩阵
+    self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
+
+    
+    #计算时刻已观测点对当前层各点的信息量
+    # self.MIforeverypoint
+    allpoint_list = []
+    for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
+        for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
+            allpoint_list.append([i, j, self.model.time_stamp])
+    point = np.array(allpoint_list)
+    prior_diag_std, poste_diag_std, _, _ = self.model.prior_poste(point)
+    hprior = gaussian_entropy(prior_diag_std.ravel())
+    hposterior = gaussian_entropy(poste_diag_std.ravel())
+    mi_all = hprior - hposterior
+    if np.any(mi_all < 0.0):
+        print(mi_all.ravel())
+        raise ValueError("Predictive MI < 0.0!")
+    normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
+    MI_information = np.zeros((self.Setting.task_extent[1]-self.Setting.task_extent[0],self.Setting.task_extent[3]-self.Setting.task_extent[2]))
+    for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
+        for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
+            MI_information[i,j] = normed_mi[i*(self.Setting.task_extent[3]-self.Setting.task_extent[2])+j]
+    self.MIforeverypoint = MI_information
+
+
+  def adaptive_update_jam(self, model, pollution_distribute, allpoint, Setting):
+    # 初始智能体位置
+    for i in range(self.agent_init_position.shape[0]):
+      self.agent_init_position[i] = self.curr_trace_set[i,self.Setting.adaptive_step-self.Setting.jam_time[i], 0:2]
+
+    # 预测模型及所需参数
+    self.Setting = Setting
+    if Setting.current_step > Setting.max_num_samples - Setting.sche_step:
+      if Setting.max_num_samples - Setting.current_step > 7:
+        self.Setting.sche_step = Setting.max_num_samples - Setting.current_step
+      else:
+        self.Setting.sche_step = 8
+    else:
+      self.Setting.sche_step = Setting.sche_step
+      
+    self.model = model
+    self.pollution_distribute = pollution_distribute
+    self.allpoint = allpoint
+    
+    # test,打印上一次的trace
+    # print("last trace")
+    # print(self.curr_trace_set)
+    # print(self.Setting.jam_time)
+
+
+    # 智能体策略矩阵,更新策略矩阵, 考虑jam
+    # jam_time[i], 每个车辆分开处理
+    for vehicle in range(self.agent_number):
+      for i in range(self.time - self.Setting.adaptive_step + self.Setting.jam_time[vehicle]):
+        self.policy_matrix[vehicle,i,:] = self.policy_matrix[vehicle,i+self.Setting.adaptive_step-self.Setting.jam_time[vehicle],:]
+        self.curr_trace_set[vehicle,i,0:3] = self.curr_trace_set[vehicle,i+self.Setting.adaptive_step-self.Setting.jam_time[vehicle],0:3] 
+        self.curr_trace_set[vehicle,i,3] = self.curr_trace_set[vehicle,i+self.Setting.adaptive_step-self.Setting.jam_time[vehicle],3] + self.time_co * self.Setting.jam_time[vehicle]
+      self.curr_trace_set[vehicle,self.time - self.Setting.adaptive_step + self.Setting.jam_time[vehicle],0:3] =  self.curr_trace_set[vehicle,self.time,0:3]
+      self.curr_trace_set[vehicle,self.time - self.Setting.adaptive_step + self.Setting.jam_time[vehicle],3] =  self.curr_trace_set[vehicle,self.time,3] + self.time_co * self.Setting.jam_time[vehicle]
+    
+    # 根据现在的长度更新
+    for j in range(self.agent_number):
+      residue_length = self.time - self.Setting.adaptive_step + self.Setting.jam_time[j]
+      self.time = self.Setting.sche_step
+      self.policy_matrix = self.policy_matrix[:,0:self.time,:]
+      self.curr_trace_set = self.curr_trace_set[:,0:(self.time+1),:]
+      adaptive_step = self.time - residue_length
+      
+      # 补充策略矩阵中缺失的部分
+      for i in range(adaptive_step):
+        # for j in range(self.agent_number):
+        if self.curr_trace_set[j,self.time - adaptive_step + i, 2] >= 1 and self.policy_matrix[j,self.time - adaptive_step - 1 + i, 2] != -1:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = 1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] = self.curr_trace_set[j,self.time - adaptive_step + i, 2] - 1
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co * (self.Setting.jam_time[j] + 1)
+        elif self.curr_trace_set[j,self.time - adaptive_step + i, 2] < 1:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = -1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] \
+            = self.curr_trace_set[j,self.time - adaptive_step + i, 2] + self.Setting.replenish_speed
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co * (self.Setting.jam_time[j] + 1)
+        elif self.curr_trace_set[j,self.time - adaptive_step + i, 2] >= self.Setting.water_volume:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = 1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] = self.curr_trace_set[j,self.time - adaptive_step + i, 2] - 1
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - self.Setting.adaptive_step + i, 3] + self.time_co * (self.Setting.jam_time[j] + 1)
+        elif self.curr_trace_set[j,self.time - adaptive_step + i, 2] < self.Setting.water_volume \
+          and self.policy_matrix[j,self.time - adaptive_step - 1 + i, 2] == -1:
+          self.policy_matrix[j, self.time - adaptive_step + i, 2] = -1
+          self.policy_matrix[j, self.time - adaptive_step + i, 0] = 0
+          self.policy_matrix[j, self.time - adaptive_step + i, 1] = 0
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 0] = self.curr_trace_set[j,self.time - adaptive_step + i, 0]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 1] = self.curr_trace_set[j,self.time - adaptive_step + i, 1]
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] \
+            = self.curr_trace_set[j,self.time - adaptive_step + i, 2] + self.Setting.replenish_speed
+          self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co * (self.Setting.jam_time[j] + 1)
+    
+    # print("new trace")
+    # print(self.curr_trace_set)
+    # sys.exit()
     #当前轨迹所覆盖矩阵
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
 

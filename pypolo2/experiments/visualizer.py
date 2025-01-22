@@ -90,7 +90,7 @@ def visual(logger):
         
         # Adjust the color range of the heatmap
         im1.set_clim(vmin=20, vmax=200)
-        im2.set_clim(vmin=0, vmax=1.0)
+        im2.set_clim(vmin=0, vmax=100)
         im3.set_clim(vmin=0, vmax=180)
         im4.set_clim(vmin=0, vmax=50)
         

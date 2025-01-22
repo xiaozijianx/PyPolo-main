@@ -5,6 +5,7 @@ from .NoSpray import NoSpray
 from .MCTSSpray import MCTSSpray
 from .SA_EffectOrientedGreedySpray import SAEffectOrientedGreedySpray
 from .TRACT import TRACT
+from .SA_EffectOrientedSelectiveSpray_Traffic import SAEffectOrientedSelectiveSpray_Traffic
 from .strategy import IStrategy
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "MCTSSpray",
     "NoSpray",
     "TRACT",
+    "SAEffectOrientedSelectiveSpray_Traffic",
     "IStrategy",
 ]
