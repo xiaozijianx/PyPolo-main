@@ -6,6 +6,7 @@ from .MCTSSpray import MCTSSpray
 from .SA_EffectOrientedGreedySpray import SAEffectOrientedGreedySpray
 from .TRACT import TRACT
 from .SA_EffectOrientedSelectiveSpray_Traffic import SAEffectOrientedSelectiveSpray_Traffic
+from .SA_DualObjectScheduling import SADualObjectScheduling
 from .strategy import IStrategy
 
 __all__ = [
@@ -17,5 +18,7 @@ __all__ = [
     "NoSpray",
     "TRACT",
     "SAEffectOrientedSelectiveSpray_Traffic",
+    "SADualObjectScheduling",
+    "SA"
     "IStrategy",
 ]

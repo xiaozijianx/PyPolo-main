@@ -34,5 +34,5 @@ def gaussian_entropy_multivariate(K: np.ndarray):
     K_det = np.linalg.det(K)
     if K_det <= 0:
         K_det = 0.00000001
-    entropy = 0.5 * np.log((2 * np.pi)**K.shape[0]*K_det)
+    entropy = 0.5 * np.log(((2 * np.pi)**K.shape[0])*K_det)
     return entropy

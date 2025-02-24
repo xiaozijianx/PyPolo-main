@@ -259,14 +259,22 @@ class GPR(IModel):
             # x_train = self.x_scaler.preprocess(x_train)
 
         _x_test = torch.tensor(x_test, dtype=torch.float64)
-        # _x_train = torch.tensor(x_train, dtype=torch.float64)
+        # 取出最大的t值列表
+        x_train = self._x_train
+        t_values = x_train[:,2]
+        unique_t = torch.unique(t_values)
+        sorted_t = torch.sort(unique_t, descending=True).values# 降序排序并选择前top_k个
+        selected_t = sorted_t[:min(10, len(sorted_t))]
+        mask = torch.isin(t_values, selected_t)# 构建选择掩码
+        x_train = x_train[mask]
+
         # Prediction
         with torch.no_grad():
-            K = self.kernel(self._x_train, self._x_train)
+            K = self.kernel(x_train, x_train)
             K.diagonal().add_(self.noise)
             L = linalg.robust_cholesky(K, jitter=self.jitter)
             # iK_y = torch.cholesky_solve(self._y_train, L, upper=False)
-            Ksn = self.kernel(_x_test, self._x_train)
+            Ksn = self.kernel(_x_test, x_train)
             # Kss_diag = self.kernel.diag(_x_test)
             Kss = self.kernel(_x_test, _x_test)
             Kss_diag = torch.unsqueeze(torch.diag(Kss), dim=1)

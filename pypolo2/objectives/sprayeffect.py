@@ -23,7 +23,7 @@ def calculate_effect(pollution):
 
 
 
-def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,extent: List[float], method = 1) -> np.ndarray:
+def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,extent: List[float], method = 2) -> np.ndarray:
     """
     Compute the effect of sprayer.
 
@@ -38,7 +38,7 @@ def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,e
     Returns
     -------
     spray_effect: np.ndarray
-       启发式的洒水效果函数,与洒水区域的污染物浓度相关,区域污染物浓度低于40，效果为0。40-60时，效果为0.02.60-80时，效果为0.06 。80以上时，效果为0.2
+       启发式的洒水效果函数,与洒水区域的污染物浓度相关,
        周围区域的效果为洒水区域的50%。
 
     """
@@ -78,18 +78,19 @@ def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,e
             candidate_point = candidates[i]
             for a in range(5):
                 for b in range(5):
-                    c1 = int(candidate_point[0] - 1 + a)
-                    c2 = int(candidate_point[1] - 1 + b)
+                    c1 = int(candidate_point[0] - 2 + a)
+                    c2 = int(candidate_point[1] - 2 + b)
                     c3 = int(candidate_point[2])
                     if c1 < extent[0] or c1 >= extent[1] or c2 < extent[2] or c2 >= extent[3]:
                         continue
                     else:
+                        row_index = np.where(np.all(allstate == np.array([c1, c2, c3]), axis=1))[0]
                         if a == 2 and b == 2:
-                            effect = effect + calculate_effect(mean[c1,c2])
+                            effect = effect + calculate_effect(mean[row_index[0]])
                         elif (a - 2)**2 + (b - 2)**2 <= 2:
-                            effect = effect + 0.7*calculate_effect(mean[c1,c2])
+                            effect = effect + 0.6*calculate_effect(mean[row_index[0]])
                         else:
-                            effect = effect + 0.5*calculate_effect(mean[c1,c2])
+                            effect = effect + 0.36*calculate_effect(mean[row_index[0]])
             spray_effect_list.append(effect)      
         spray_effect = np.array(spray_effect_list)
         return spray_effect

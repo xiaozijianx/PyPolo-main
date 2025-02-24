@@ -5,17 +5,18 @@ import numpy as np
 
 class Config:
     """Configuring some parameters."""
-    def __init__(self, root_dir = "./outputs", save_name = "text", strategy = None, 
+    def __init__(self, root_dir = "../outputs", save_name = "text", strategy = None, 
                  diffusivity_K =1.2, grid_x = 20, grid_y = 20, time_co = 0.0001, delta_t = 0.01,
                  sensing_rate = 1.0, noise_scale = 1.0, num_init_samples = 1, seed = 11,
-                 time_before_sche = 5, station_size = 1, sourcenum = 4, R_change_interval = 50,
+                 time_before_sche = 5, station_size = 1, sourcenum = 4, R_change_interval = 15,
                  init_amplitude = 1.0, init_lengthscale = 0.5, init_noise = 1.0,
                  lr_hyper = 0.01, lr_nn = 0.001,
                  team_size = 4, water_volume=4, replenish_speed = 1,
-                 max_num_samples = 48, current_step = 0 ,bound1 = 100, bound2 = 15, bound3 = 100,
-                 alpha = [0.75,0.9,0.99,1.05,1.5],
-                 Strategy_Name = "SA_OnlyonetimeMI_simpleeffect",
-                 sche_step = 18, adaptive_step = 3, Env = "Dynamic",
+                 max_num_samples = 18, current_step = 0 , bound0=50, bound1 = 100, bound2 = 15, bound3 = 100,
+                #  alpha = [0.75,0.9,0.99,1.05,1.5],
+                 alpha = 0.2,
+                 Strategy_Name = "SA_Dualobject",
+                 sche_step = 10, adaptive_step = 3, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
         
         # 实验数据选择,污染源数目选择,森林灭火拓展试验专用
@@ -43,6 +44,7 @@ class Config:
         self.R_change_interval = R_change_interval
         self.data_sprayer_train = [] 
         # self.RR = np.zeros((self.sourcenum, 3)).astype(int)
+        # R记录污染分布，RR仅记录污染源分布及位置
         self.RR = np.zeros((6, 3)).astype(int)
         self.RR[0,0] = 17
         self.RR[0,1] = 3
@@ -63,12 +65,8 @@ class Config:
         self.RR[5,1] = 10
         self.RR[5,2] = 60
         self.RR = self.RR.astype(int)
-        # 根据车辆数决定污染源数量
-        for a in range(team_size):
+        for a in range(6):
             self.R[self.RR[a,0],self.RR[a,1]] = self.RR[a,2]
-            # self.R[self.RR[1,0],self.RR[1,1]] = self.RR[1,2]
-            # self.R[self.RR[2,0],self.RR[2,1]] = self.RR[2,2]
-            # self.R[self.RR[3,0],self.RR[3,1]] = self.RR[3,2]
         
         self.Traffic_jam_number = 40
         self.Traffic_jam = np.zeros((self.Traffic_jam_number, 3)).astype(int)
@@ -76,12 +74,6 @@ class Config:
         self.jam_time = np.zeros(team_size).astype(int)
 
         self.sources = []# 疑似污染源
-        # data_sprayer_train = []
-        # time_range = 100
-        # data_sprayer_train.append(pd.DataFrame({"time":range(t , t + time_range), "x":np.linspace(0,grid_x,time_range),\
-        #                                         "y":np.linspace(0,grid_y,time_range), "spray_volume":[500 for i in range(time_range)]}))
-        #洒水车的轨迹和洒水量 (轨迹时间单位：min, 轨迹空间单位：百米（每个网格为100m x 100m）, 洒水量单位 L/min)
-        #每个洒水车对应一个data_sprayer_train[i]
 
         #time parameter
         self.time_co = 0.1 #高斯过程回归，时间步长
@@ -101,6 +93,7 @@ class Config:
         self.max_num_samples = max_num_samples
         self.current_step = current_step
         # 模拟退火的搜索轮数
+        self.bound0 = bound0 # 信息搜索轮数
         self.bound1 = bound1 # 稀疏搜索轮数
         self.bound2 = bound2 # 后续优化轮数
         self.bound3 = bound3 # 次轮搜索轮数
@@ -148,6 +141,10 @@ class Config:
         
         # 实验接受率
         self.accept_rate = []
+
+        # 目标位置分层密度
+        self.layer_xyinterval = [4,5,6]
+        self.layer_tinterval = [2,3,5]
 
     
         

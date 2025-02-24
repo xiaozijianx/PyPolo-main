@@ -151,7 +151,7 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
             change_step = 0
             if Setting.randomsource == True:
                 # gengerate two set of random numbers for source locations
-                numbers = rng.randint(0, 5, size=Setting.sourcenum * 2)
+                numbers = rng.randint(0, 4, size=Setting.sourcenum * 2)
                 pairs = rng.choice(numbers, size=(Setting.sourcenum, 2), replace=False)
                 for i in range(Setting.sourcenum):
                     number = rng.randint(50, 70, size=1)

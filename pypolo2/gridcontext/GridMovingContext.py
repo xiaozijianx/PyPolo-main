@@ -7,6 +7,7 @@ from time import time
 import itertools
 import numpy as np
 import math
+import time as tm
 # from ..Common.QFunctions import time_decay_aggregation, calculate_kldiv
 # from ..Common.common import even_dist, gaussian_dist, dg_corner_dist, noise_dist
 from ..models import IModel
@@ -123,7 +124,7 @@ class GridMovingContext():
   
   def CalculateMISQ(self):
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
-    return self.calculate_MI_scores(2)
+    return self.calculate_MI_scores()
 
   def calculate_Spray_scores(self, method=1):
     if method == 1:
@@ -418,58 +419,33 @@ class GridMovingContext():
           spray_effect[i] = spray_effect[i] / spray_time[i] 
       return spray_effect0, spray_effect
 
-  def calculate_MI_scores(self, method = 2):
-    #calculate mi about selected point to all points at one time
-    if method == 1:
-      #calculate mi at one time point
-      curr_matrixB = self.curr_matrixB
-      allpoint_list = []
-      for i in range (self.Setting.task_extent[0],self.Setting.task_extent[1]):
-          for j in range (self.Setting.task_extent[2],self.Setting.task_extent[3]):
-              allpoint_list.append([i, j, self.model.time_stamp])
-      allpoint = np.array(allpoint_list)
-      
-      processed_points = np.unique(curr_matrixB, axis=0)
-      train_data = self.model.get_data_x()
-      
-      nrows, ncols = train_data.shape
-      dtype={'names':['f{}'.format(i) for i in range(ncols)],
-          'formats':ncols * [train_data.dtype]}
-      mid_points = np.intersect1d(train_data.view(dtype), processed_points.view(dtype))
-      processed_points2 = np.setdiff1d(processed_points.view(dtype), mid_points)
-      processed_points2 = processed_points2.view(train_data.dtype).reshape(-1, ncols)
-      self.model.add_data_x(processed_points2)
-      _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint)
-      if processed_points2.shape[0] > 0:
-          self.model.reduce_data_x(processed_points2.shape[0])
-      # prior_entropy = gaussian_entropy_multivariate(prior_cov)
-      # poste_entropy = gaussian_entropy_multivariate(poste_cov)
-      # mi = prior_entropy - poste_entropy
-      mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
-      # print(mi)
-    elif method == 2:
-      #calculate mi at whole time period，all_state are about the whole time
-      curr_matrixC = self.curr_matrixC
-      allpoint = self.allpoint
-      processed_points = np.unique(curr_matrixC, axis=0)
-      # print(processed_points)
-      train_data = self.model.get_data_x()
-      
-      nrows, ncols = train_data.shape
-      dtype={'names':['f{}'.format(i) for i in range(ncols)],
-          'formats':ncols * [train_data.dtype]}
-      mid_points = np.intersect1d(train_data.view(dtype), processed_points.view(dtype))
-      processed_points2 = np.setdiff1d(processed_points.view(dtype), mid_points)
-      processed_points2 = processed_points2.view(train_data.dtype).reshape(-1, ncols)
-      self.model.add_data_x(processed_points2)
-      _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint)
-      if processed_points2.shape[0] > 0:
-          self.model.reduce_data_x(processed_points2.shape[0])
-      # prior_entropy = gaussian_entropy_multivariate(prior_cov)
-      # poste_entropy = gaussian_entropy_multivariate(poste_cov)
-      # mi = prior_entropy - poste_entropy
-      mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
-        
+  def calculate_MI_scores(self, ):
+    #calculate mi at whole time period，all_state are about the whole time
+    curr_matrixC = self.curr_matrixC
+    allpoint = self.allpoint
+    processed_points = np.unique(curr_matrixC, axis=0)
+    # print(processed_points)
+    train_data = self.model.get_data_x()
+    nrows, ncols = train_data.shape
+    dtype={'names':['f{}'.format(i) for i in range(ncols)],
+        'formats':ncols * [train_data.dtype]}
+    mid_points = np.intersect1d(train_data.view(dtype), processed_points.view(dtype))
+    processed_points2 = np.setdiff1d(processed_points.view(dtype), mid_points)
+    processed_points2 = processed_points2.view(train_data.dtype).reshape(-1, ncols)
+    self.model.add_data_x(processed_points2)
+    _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint)
+    if processed_points2.shape[0] > 0:
+        self.model.reduce_data_x(processed_points2.shape[0])
+    time1 = tm.time()
+    prior_entropy = gaussian_entropy_multivariate(prior_cov)
+    poste_entropy = gaussian_entropy_multivariate(poste_cov)
+    time2 = tm.time()
+    print("熵计算耗时")
+    print(time2-time1) 
+    import sys
+    sys.exit()
+    mi = prior_entropy - poste_entropy
+    # mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
     return mi
   
   def calculate_wolume_scores(self):
