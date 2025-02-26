@@ -134,7 +134,7 @@ def parse_arguments(verbose=False):
                         type=int,
                         default=4,
                         help="water volume of one vehicle")
-    parser.add_argument('--alpha', type=list, default=[0.75,0.9,1.01,1.05,1.5], required=False, help='object weight.')
+    parser.add_argument('--alpha', type=float, default=1.5, required=False, help='imformation gain weight.')
     parser.add_argument("--root_dir",
                         type=str,
                         default="./output/",

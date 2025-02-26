@@ -263,8 +263,8 @@ class GPR(IModel):
         x_train = self._x_train
         t_values = x_train[:,2]
         unique_t = torch.unique(t_values)
-        sorted_t = torch.sort(unique_t, descending=True).values# 降序排序并选择前top_k个
-        selected_t = sorted_t[:min(10, len(sorted_t))]
+        sorted_t = torch.sort(unique_t, descending=True).values# 降序排序并选择前top_k个,目前是10
+        selected_t = sorted_t[:min(30, len(sorted_t))]
         mask = torch.isin(t_values, selected_t)# 构建选择掩码
         x_train = x_train[mask]
 

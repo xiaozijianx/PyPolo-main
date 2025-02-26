@@ -6,6 +6,7 @@ import numpy as np
 import math
 from concurrent.futures import ProcessPoolExecutor
 from typing import List
+import time as tm
 import matplotlib.pyplot as plt
 
 # from sklearn.utils import shuffle
@@ -400,27 +401,32 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
             if(rng.random() < accept_prob):
               curr_context = new_mc_context
             curr_context.Setting.accept_rate.append(accept_prob)
-    sprayeffect_after = curr_context.CalculateSpraySQ(method = 2)
-    sq_list.append(sprayeffect_after)
+    MI_after = curr_context.CalculateMISQ()
+    sq_list.append(MI_after)
   return curr_context, sq_list
 
 # @PrintExecutionTime
-def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext,bound0,bound1,bound2,alpha,currentstep,agent_scores):
+def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext,bound0,bound1,bound2,bound3,alpha,currentstep,agent_scores):
   # 洒水车规划算法，双目标
   # 计算当前的分数并储存
-  sprayeffect_before = origin_context.CalculateSpraySQ()
+  MI_before = origin_context.CalculateMISQ()
   sq_list_total = []
-  sq_list_total.append(sprayeffect_before)
+  sq_list_total.append(MI_before)
 
   # 第0阶段：先进行纯信息目标探索
   # 无信息目标要求
+  time1 = tm.time()
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
+  # single_playout = 50
   Info_Temp = 30
   Spray_Temp = 50
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.001, 1 / bound0)
+  k = math.pow(0.0002, 1 / bound0)
   context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound0, object = 1)
   mi_high = context.CalculateMISQ()
+  time2 = tm.time()
+  print("信息搜索耗时1")
+  print(time2-time1)
   
   # 然后进行综合规划
   # 首先计算信息目标，并且对不同车辆划分角色
@@ -428,48 +434,59 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext,bound0,boun
   # 对agent_scores排序
   sorted_indices = sorted(
     range(len(agent_scores)),
-    key=lambda i: (-agent_scores[i], i)  # 先按分数升序，再按原索引降序
+    key=lambda i: (agent_scores[i], i)  # 先按分数升序，再按原索引升序
   )
   rank = [0] * len(agent_scores)
   for pos, idx in enumerate(sorted_indices):
     rank[idx] = pos
   for i in range(context.GetAgentNumber()):
-    object_mi[i] = mi_high * alpha *(0.95**currentstep)*(0.9**rank[i])
+    object_mi[i] = mi_high * alpha * 1.4 *(0.95**currentstep)*(0.95**rank[i])
   print("当前车辆分数")
   print(agent_scores)
   print("车辆得分排名")
   print(rank)
   print(object_mi)
-  import sys
-  sys.exit()
+  # import sys
+  # sys.exit()
 
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 30
-  Spray_Temp = 50
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.001, 1 / bound0)
-
-  # 然后分步规划
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 30
-  Spray_Temp = 50
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.8, 1 / bound1)
-  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 2, object_mi = object_mi)
+  # # 然后分步规划
+  # single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
+  # Info_Temp = 30
+  # Spray_Temp = 50
+  # Temp = [Info_Temp, Spray_Temp]
+  # k = math.pow(0.8, 1 / bound1)
+  # context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 2, object_mi = object_mi)
+  # time3 = tm.time()
+  # print("Stage1 耗时")
+  # print(time3-time2)
 
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
   Info_Temp = 10
   Spray_Temp = 20
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 2, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound3)
+  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 2, object_mi = object_mi)
+  time4 = tm.time()
+  print("Stage1 耗时")
+  print(time4-time2)
+
+  # 对一阶段的信息指标进行画图：
+  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
+  # ax.plot(sq_list_total+sq_list)
+  # ax.set_ylim([-10, 40])
+  # ax.set_title(f"sq_list_total")
+  # plt.tight_layout()
+  # plt.show()
 
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 30
-  Spray_Temp = 50
+  Info_Temp = 10
+  Spray_Temp = 100
   Temp = [Info_Temp, Spray_Temp]
   k = math.pow(0.0002, 1 / bound2)
   context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 3, object_mi = object_mi)
+  time5 = tm.time()
+  print("Stage2 耗时")
+  print(time5-time4)
   
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
   Info_Temp = 10
@@ -477,26 +494,32 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext,bound0,boun
   # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
   Temp = [Info_Temp, Spray_Temp]
   k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
+  context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
+  time6 = tm.time()
+  print("Stage3 耗时")
+  print(time6-time5)
 
   return context, sq_list_total + sq_list
 
-def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound0, bound2, bound3, alpha, currentstep, agent_scores):
+def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound0, bound2, bound3, alpha, currentstep,agent_scores):
   # 洒水车规划算法，假设环境已知，以洒水收益微单目标进行长周期多动作规划
   # 计算当前的分数并储存
-  sprayeffect_before = origin_context.CalculateSpraySQ()
+  MI_before = origin_context.CalculateMISQ()
   sq_list_total = []
-  sq_list_total.append(sprayeffect_before)
+  sq_list_total.append(MI_before)
 
   # 第0阶段：先进行纯信息目标探索
-  # 无信息目标要求
+  time1 = tm.time()
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 30
+  Info_Temp = 20
   Spray_Temp = 50
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.001, 1 / bound0)
-  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound0, object = 1)
+  k = math.pow(0.0002, 1 / bound3)
+  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 1)
   mi_high = context.CalculateMISQ()
+  time2 = tm.time()
+  print("信息搜索耗时1")
+  print(time2-time1)
   
   # 然后进行综合规划
   # 首先计算信息目标
@@ -504,37 +527,59 @@ def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound0, bo
   # 对agent_scores排序
   sorted_indices = sorted(
     range(len(agent_scores)),
-    key=lambda i: (-agent_scores[i], i)  # 先按分数升序，再按原索引降序
+    key=lambda i: (agent_scores[i], i)  # 先按分数升序，再按原索引降序
   )
   rank = [0] * len(agent_scores)
   for pos, idx in enumerate(sorted_indices):
     rank[idx] = pos
   for i in range(context.GetAgentNumber()):
-    object_mi[i] = mi_high * alpha *(0.95**currentstep)*(0.9**rank[i])
-  for i in range(context.GetAgentNumber()):
-    object_mi[i] = mi_high * alpha *(0.95**currentstep)
+    object_mi[i] = mi_high * alpha *(0.985**currentstep)*(0.93**rank[i])
+  print("当前车辆分数")
+  print(agent_scores)
+  print("车辆得分排名")
+  print(rank)
+  print(object_mi)
   
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 20
-  Spray_Temp = 60
+  Info_Temp = 10
+  Spray_Temp = 20
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.001, 1 / bound3)
-  context, _ = SimulatedAnnealing(rng, origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 2, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound3)
+  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 2, object_mi = object_mi)
+  time3 = tm.time()
+  print("Stage1 耗时")
+  print(time3-time2)
+
+  # 对一阶段的信息指标进行画图：
+  # print("currentstep")
+  # print(currentstep)
+  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
+  # ax.plot(sq_list_total+sq_list)
+  # ax.set_ylim([-10, 70])
+  # ax.set_title(f"sq_list_total")
+  # plt.tight_layout()
+  # plt.show()
 
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 40
+  Info_Temp = 10
   Spray_Temp = 200
   Temp = [Info_Temp, Spray_Temp]
   k = math.pow(0.0002, 1 / bound2)
   context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 3, object_mi = object_mi)
+  time4 = tm.time()
+  print("Stage2 耗时")
+  print(time4-time3)
   
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
   Info_Temp = 10
-  Spray_Temp = 40
+  Spray_Temp = 20
   # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
   Temp = [Info_Temp, Spray_Temp]
   k = math.pow(0.0002, 1 / bound2)
-  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
+  context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
+  time5 = tm.time()
+  print("Stage3 耗时")
+  print(time5-time4)
 
   return context, sq_list_total + sq_list
 
@@ -649,30 +694,35 @@ class SADualObjectScheduling(IStrategy):
           sche_step = Setting.sche_step
         # 计算用于规划的目标集合 阶梯式的非均匀##############################################################
         allpoint_list = []
-        print("每次搜索时的sche_step","观察搜索后期的schedulestep是否会缩短")
-        print(Setting.sche_step)
         layer = 0
-        while Setting.adaptive_step*layer < Setting.sche_step:
+        while Setting.adaptive_step*layer < Setting.sche_step and layer <= 2:
           if layer == 0:
-              interval = ((np.ceil((self.task_extent[1]-self.task_extent[0])/Setting.layer_xyinterval[0])*Setting.layer_xyinterval[0])-(self.task_extent[1]-self.task_extent[0]-1))/Setting.layer_xyinterval[0]
-              for num in range(0,Setting.adaptive_step*(layer+1),Setting.layer_tinterval[0]):
-                  for i in np.arange (self.task_extent[0]-interval,self.task_extent[1]+interval,Setting.layer_xyinterval[0]):
-                      for j in np.arange (self.task_extent[2]-interval,self.task_extent[3]+interval,Setting.layer_xyinterval[0]):
+              xyinterval = (self.task_extent[1]-self.task_extent[0])/(Setting.layer_xy[0])
+              tinterval = Setting.adaptive_step/(Setting.layer_t[0])
+              for num in np.arange(Setting.adaptive_step*layer+0.5*tinterval, Setting.adaptive_step*(layer+1), tinterval):
+                  for i in np.arange (self.task_extent[0]+0.5*xyinterval,self.task_extent[1],xyinterval):
+                      for j in np.arange (self.task_extent[0]+0.5*xyinterval,self.task_extent[1],xyinterval):
                           allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
-          elif layer <= 2:
-              interval = ((np.ceil((self.task_extent[1]-self.task_extent[0])/Setting.layer_xyinterval[1])*Setting.layer_xyinterval[1])-(self.task_extent[1]-self.task_extent[0]-1))/Setting.layer_xyinterval[1]
-              for num in range(Setting.adaptive_step*layer,Setting.adaptive_step*(layer+1),Setting.layer_tinterval[1]):
-                  for i in np.arange (self.task_extent[0]-interval,self.task_extent[1]+interval,Setting.layer_xyinterval[1]):
-                      for j in np.arange (self.task_extent[0]-interval,self.task_extent[1]+interval,Setting.layer_xyinterval[1]):
+          elif layer > 0 and layer <= 1:
+              xyinterval = (self.task_extent[1]-self.task_extent[0])/(Setting.layer_xy[1])
+              tinterval = Setting.adaptive_step/(Setting.layer_t[1])
+              for num in np.arange(Setting.adaptive_step*layer+0.5*tinterval, Setting.adaptive_step*(layer+1), tinterval):
+                  for i in np.arange (self.task_extent[0]+0.5*xyinterval,self.task_extent[1],xyinterval):
+                      for j in np.arange (self.task_extent[0]+0.5*xyinterval,self.task_extent[1],xyinterval):
                           allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
-          else:
-              interval = ((np.ceil((self.task_extent[1]-self.task_extent[0])/Setting.layer_xyinterval[2])*Setting.layer_xyinterval[2])-(self.task_extent[1]-self.task_extent[0]-1))/Setting.layer_xyinterval[2]
-              for num in range(Setting.adaptive_step*layer,Setting.adaptive_step*(layer+1),Setting.layer_tinterval[2]):
-                  for i in np.arange (self.task_extent[0]-interval,self.task_extent[1]+interval,Setting.layer_xyinterval[2]):
-                      for j in np.arange (self.task_extent[0]-interval,self.task_extent[1]+interval,Setting.layer_xyinterval[2]):
+          elif layer > 1:
+              xyinterval = (self.task_extent[1]-self.task_extent[0])/Setting.layer_xy[2]
+              tinterval = (Setting.sche_step - Setting.adaptive_step*layer)/(Setting.layer_t[2])
+              for num in np.arange(Setting.adaptive_step*layer+0.5*tinterval, Setting.sche_step, tinterval):
+                  for i in np.arange (self.task_extent[0]+0.5*xyinterval,self.task_extent[1],xyinterval):
+                      for j in np.arange (self.task_extent[0]+0.5*xyinterval,self.task_extent[1],xyinterval):
                           allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
           layer = layer + 1
         allpoint = np.array(allpoint_list)
+        # print("分层情况")
+        # print(allpoint)
+        # import sys
+        # sys.exit()
 
         if self.moving_context is None:
           agent_init_position = []
@@ -681,10 +731,10 @@ class SADualObjectScheduling(IStrategy):
           agent_init_position = np.array(agent_init_position)
           self.moving_context = GridMovingContext(agent_init_position, model, pred, allpoint, Setting)
           self.alpha = Setting.alpha
-          self.moving_context, sq_list_total = SimulatedAnnealingInitual(self.rng, self.moving_context, Setting.bound0, Setting.bound1, Setting.bound2, self.alpha, Setting.current_step, agent_scores)
+          self.moving_context, sq_list_total = SimulatedAnnealingInitual(self.rng, self.moving_context, Setting.bound0, Setting.bound1, Setting.bound2, Setting.bound3, self.alpha, Setting.current_step, agent_scores)
         else:
           self.moving_context.adaptive_update(model, pred, allpoint, Setting)
-          self.moving_context, sq_list_total = SimulatedAnnealingProcess(self.rng, self.moving_context, Setting.bound2, Setting.bound3, self.alpha, Setting.current_step, agent_scores)
+          self.moving_context, sq_list_total = SimulatedAnnealingProcess(self.rng, self.moving_context, Setting.bound0, Setting.bound2, Setting.bound3, self.alpha, Setting.current_step, agent_scores)
         
         #context中包含最后的结果
         policy_now = self.moving_context.policy_matrix.copy()

@@ -12,11 +12,11 @@ class Config:
                  init_amplitude = 1.0, init_lengthscale = 0.5, init_noise = 1.0,
                  lr_hyper = 0.01, lr_nn = 0.001,
                  team_size = 4, water_volume=4, replenish_speed = 1,
-                 max_num_samples = 18, current_step = 0 , bound0=50, bound1 = 100, bound2 = 15, bound3 = 100,
+                 max_num_samples = 18, current_step = 0 , bound0=70, bound1 = 100, bound2 = 15, bound3 = 50,
                 #  alpha = [0.75,0.9,0.99,1.05,1.5],
-                 alpha = 0.2,
+                 alpha = 1.4,
                  Strategy_Name = "SA_Dualobject",
-                 sche_step = 10, adaptive_step = 3, Env = "Dynamic",
+                 sche_step = 15, adaptive_step = 3, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
         
         # 实验数据选择,污染源数目选择,森林灭火拓展试验专用
@@ -143,8 +143,8 @@ class Config:
         self.accept_rate = []
 
         # 目标位置分层密度
-        self.layer_xyinterval = [4,5,6]
-        self.layer_tinterval = [2,3,5]
+        self.layer_xy = [10,9,7] # midu
+        self.layer_t = [2,1,2]  # midu
 
     
         

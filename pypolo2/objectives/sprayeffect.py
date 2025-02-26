@@ -78,9 +78,9 @@ def spray_effect(candidates: np.ndarray, allstate: np.ndarray,mean: np.ndarray,e
             candidate_point = candidates[i]
             for a in range(5):
                 for b in range(5):
-                    c1 = int(candidate_point[0] - 2 + a)
-                    c2 = int(candidate_point[1] - 2 + b)
-                    c3 = int(candidate_point[2])
+                    c1 = candidate_point[0] - 2 + a
+                    c2 = candidate_point[1] - 2 + b
+                    c3 = candidate_point[2]
                     if c1 < extent[0] or c1 >= extent[1] or c2 < extent[2] or c2 >= extent[3]:
                         continue
                     else:

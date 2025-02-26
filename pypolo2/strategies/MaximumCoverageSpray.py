@@ -246,8 +246,6 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
   # try:
   Temp = initial_temp
   curr_context = copy.deepcopy(origin_mc_context)
-  # seed = curr_context.Setting.seed
-  # random.seed(seed)
   while(curr_turns < bound):
     iters = 0
     curr_turns += 1
@@ -256,59 +254,21 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
     # print(curr_turns)
     while(iters < n_playout):
       iters += 1
-      # rand_category = rng.randint(0, 1)
-      rand_category = 0
-      rand_spray_category = rng.randint(0, 3)
       rand_agent = rng.randint(0, curr_context.GetAgentNumber())
       rand_time = rng.randint(0, curr_context.GetMaxTime())
-      SprayTime = curr_context.GetSprayTime(rand_agent)
-      if SprayTime == 0:
-        rand_time1 = 0
-      else:
-        rand_time1 = rng.randint(0, SprayTime)
-      DontSprayTime = curr_context.GetDontSprayTime(rand_agent)
-      if DontSprayTime == 0:
-        rand_time2 = 0
-      else:
-        rand_time2 = rng.randint(0, DontSprayTime)
+
       rand_action = rng.randint(0, curr_context.GetPossibleActions())
       agent_position_list = None
       New_policy = None
-      if rand_category == 0:
-        # 调整位置
-        agent_position_list, New_policy = try_move(curr_context, rand_agent, rand_time, rand_action)
-      else:
-        # 调整洒水动作
-        if rand_spray_category == 0:
-          New_policy = try_spray0(rng, curr_context, rand_agent, rand_time1)
-        elif rand_spray_category == 1:
-          New_policy = try_spray1(rng, curr_context, rand_agent, rand_time2) 
-        elif rand_spray_category == 2:
-          New_policy = try_spray2(rng, curr_context, rand_agent, rand_time2)
+      # 调整位置
+      agent_position_list, New_policy = try_move(curr_context, rand_agent, rand_time, rand_action)
       
-      # 分类执行
-      # 根据随机选择的动作操作智能体轨迹
+      # 执行
       new_mc_context = copy.deepcopy(curr_context)
-      # print(rand_category,rand_spray_category)
-      if rand_category == 0:
-        # 调整位置
-        if(agent_position_list is None):
-          continue
-        do_move(new_mc_context, rand_agent, rand_time, New_policy, agent_position_list)
-      elif rand_category == 1:
-        # 调整洒水
-        if rand_spray_category == 0:
-          if(New_policy is None):
-            continue
-          do_spray(new_mc_context, rand_agent, New_policy)  
-        elif rand_spray_category == 1:
-          if(New_policy is None):
-            continue
-          do_spray(new_mc_context, rand_agent, New_policy)  
-        elif rand_spray_category == 2:
-          if(New_policy is None):
-            continue
-          do_spray(new_mc_context, rand_agent, New_policy)  
+      # 调整位置
+      if(agent_position_list is None):
+        continue
+      do_move(new_mc_context, rand_agent, rand_time, New_policy, agent_position_list)
 
       # 仅使用信息目标作为接收标准
       if object == 1:
@@ -322,90 +282,24 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
           accept_prob = np.exp(delta_MI / (curr_k * Temp))
           if(rng.random() < accept_prob):
             curr_context = new_mc_context
-      # 仅使用洒水目标作为接收标准
-      elif object == 2:
-        sprayeffect_before, _ = curr_context.calculate_Sprayscores_foreveryvehicle()
-        sprayeffect_after, _ = new_mc_context.calculate_Sprayscores_foreveryvehicle()
-        delta_sprayeffect = sprayeffect_after - sprayeffect_before
-        if(delta_sprayeffect >= 0):
-          curr_context = new_mc_context
-        else:
-          # accept by chance
-          accept_prob = np.exp(delta_sprayeffect / (curr_k * Temp))
-          if(rng.random() < accept_prob):
-            curr_context = new_mc_context
       
-      # 综合的接收情况，分别通过，洒水限制优先考虑
-      elif object == 3:
-        # MI_before = curr_context.CalculateMISQ()
-        # MI_after = new_mc_context.CalculateMISQ()
-        # spray_time_before = curr_context.calculate_wolume_scores()
-        # spray_time_after = new_mc_context.calculate_wolume_scores()
-        
-        # delta_MI = MI_after - MI_before
-        # delta_spraytime = spray_time_after - spray_time_before
-        MI_after = 100
-        delta_MI = 0
-        delta_spraytime = 0
-        if enough_info[rand_agent] == False:
-          print(1)
-          if delta_spraytime <= 0:
-            if rand_category == 0:
-              delta_MI = np.max((8-rand_time,1))*delta_MI
-            if(delta_MI >= 0):
-              curr_context = new_mc_context
-            else:
-              # accept by chance
-              accept_prob = np.exp(delta_MI / (curr_k * Temp[0]))
-              if(rng.random() < accept_prob):
-                curr_context = new_mc_context
-        else:
-          if MI_after < object_mi[rand_agent]:
-            print(2)
-            if delta_MI >= 0:
-              curr_context = new_mc_context
-            elif delta_MI < 0:
-              accept_prob = np.exp(delta_MI / (curr_k * Temp[0]))
-              if(rng.random() < accept_prob):
-                curr_context = new_mc_context
-            
-          elif MI_after >= object_mi[rand_agent]:
-            sprayeffect_before = curr_context.CalculateSpraySQ()
-            sprayeffect_after = new_mc_context.CalculateSpraySQ()
-            delta_sprayeffect = sprayeffect_after - sprayeffect_before
-            if delta_sprayeffect >= 0:
-              curr_context = new_mc_context
-            elif delta_sprayeffect < 0:
-              print(delta_sprayeffect)
-              accept_prob = np.exp(delta_sprayeffect / (curr_k * Temp[1]))
-              if(rng.random() < accept_prob):
-                curr_context = new_mc_context
-      
-    sprayeffect_after = curr_context.CalculateSpraySQ()
-    sprayeffect_after5step, _ = curr_context.calculate_Sprayscores_foreveryvehicle()
     MI_after = curr_context.CalculateMISQ()
-    sq_list.append((sprayeffect_after, sprayeffect_after5step, MI_after))
+    sq_list.append(MI_after)
   return curr_context, sq_list
 
 # @PrintExecutionTime
 def SimulatedAnnealingFixed(rng, origin_context: GridMovingContext, bound, alpha):
   # 洒水车顺序规划算法，假设环境已知，以信息目标为通过标准计算
   # 计算当前的分数并储存
-  sprayeffect_before = origin_context.CalculateSpraySQ()
-  sprayeffect_before5step, _ = origin_context.calculate_Sprayscores_foreveryvehicle()
-  mi_low = origin_context.CalculateMISQ()
+  MI_before = origin_context.CalculateMISQ()
   sq_list_total = []
-  sq_list_total.append((sprayeffect_before, sprayeffect_before5step, mi_low))
-  # sq_list_total.append((sprayeffect_before, 0, 0))
+  sq_list_total.append(MI_before)
 
   # 以信息目标为单一目标进行综合规划
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = np.max((30 - origin_context.Setting.current_step * 10,8))
   Temp = 30
   k = math.pow(0.00002, 1 / bound)
   context, sq_list = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound, object = 1)
-  # print(context.policy_matrix)
-  # print(context.curr_trace_set)
   return context, sq_list_total + sq_list
 
 #定义SA算法包装
@@ -432,6 +326,7 @@ class SAMaximumCoverageSpray(IStrategy):
         super().__init__(task_extent, rng)
         self.vehicle_team = vehicle_team
         self.moving_context = None
+        self.confidence = 0.5
 
         
     def get(self, model: IModel, Setting, pred) -> np.ndarray:
@@ -466,7 +361,7 @@ class SAMaximumCoverageSpray(IStrategy):
         # 计算用于规划的目标集合 阶梯式的非均匀
         allpoint_list = []
         a = ((np.ceil((self.task_extent[1]-self.task_extent[0])/2)*2)-(self.task_extent[1]-self.task_extent[0]-1))/2
-        b = ((np.ceil((self.task_extent[1]-self.task_extent[0])/3)*3)-(self.task_extent[1]-self.task_extent[0]-1))/2
+        b = ((np.ceil((self.task_extent[1]-self.task_extent[0])/3)*3)-(self.task_extent[1]-self.task_extent[0]-1))/3
         
         for num in range(0,Setting.sche_step,2):
           for i in np.arange (self.task_extent[0]-a,self.task_extent[1]+a,2):
@@ -483,7 +378,7 @@ class SAMaximumCoverageSpray(IStrategy):
           self.alpha = Setting.alpha
         else:
           self.moving_context.adaptive_update(model, pred, allpoint, Setting)
-        self.moving_context, sq_list_total = SimulatedAnnealingFixed(self.rng, self.moving_context, Setting.bound, self.alpha)
+        self.moving_context, sq_list_total = SimulatedAnnealingFixed(self.rng, self.moving_context, Setting.bound3, self.alpha)
         
         #context中包含最后的结果
         policy_now = self.moving_context.policy_matrix.copy()

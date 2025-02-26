@@ -10,6 +10,7 @@ grid_y: 20
 randomsource: True
 sourcenum: 4
 R_change_interval: 50
+alpha: 1.5
 
 #time parameter
 time_co: 0.1 
