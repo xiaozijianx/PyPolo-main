@@ -329,7 +329,7 @@ class SAMaximumCoverageSpray(IStrategy):
         self.confidence = 0.5
 
         
-    def get(self, model: IModel, Setting, pred) -> np.ndarray:
+    def get(self, model: IModel, Setting, pred, agent_scores) -> np.ndarray:
         """Get goal states.
           顺序执行，根据车辆数相互配合，避免重复区域，实现上，以信息最大为目标，仅调整位置,计算时固定规划长度为8。
         Parameters

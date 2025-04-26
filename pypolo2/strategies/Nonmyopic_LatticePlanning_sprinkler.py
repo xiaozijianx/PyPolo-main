@@ -42,6 +42,7 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
         """
         super().__init__(task_extent, rng)
         self.vehicle_team = vehicle_team
+        self.confidence = 0.5
         
     def greedy_search_multi_step(self, length, weights, id):
         graph = nx.DiGraph()
@@ -81,36 +82,53 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
 
         return path
         
-    def get(self, model: IModel, Setting, pred) -> np.ndarray:
+    def get(self, model: IModel, Setting, pred, agent_scores) -> np.ndarray:
         # predict model
         # 获取在当前时刻污染分布下，在每个点洒水时的效果。
         # 这种算法将每个点独立考虑，而没有考虑其收益之间的影响。
+        print('current_turn')
+        print((Setting.current_step + Setting.adaptive_step)/Setting.adaptive_step)
+
+        allstate_list_forinfor = []
         allstate_list_forpred = []
         for i in range (self.task_extent[0],self.task_extent[1]):
             for j in range (self.task_extent[2],self.task_extent[3]):
                 allstate_list_forpred.append([i, j, model.time_stamp])
+                allstate_list_forinfor.append([i, j, model.time_stamp])
+        allstate_forinfor = np.array(allstate_list_forinfor)
         allstate_forpred = np.array(allstate_list_forpred)
-        print(allstate_forpred.shape)
-        print(pred.shape)
-        sprayeffect_all = spray_effect(allstate_forpred,allstate_forpred,pred,self.task_extent,method=2).ravel()
+        # print(allstate_forpred.shape)
+        # print(pred.shape)
+        # compute predict mean and spray_effect of all point
+        mean, _ = model(allstate_forpred)
+        sprayeffect_all = spray_effect(allstate_forpred,allstate_forpred,mean,self.task_extent).ravel()
 
-        # Processing
-        # sprayeffect = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
-        # for i in range (Setting.task_extent[0],Setting.task_extent[1]):
-        #     for j in range (Setting.task_extent[2],Setting.task_extent[3]):
-        #         sprayeffect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
+        #compute mi of all points
+        prior_diag_std, poste_diag_std, _, _ = model.prior_poste(allstate_forinfor)
+        hprior = gaussian_entropy(prior_diag_std.ravel())
+        hposterior = gaussian_entropy(poste_diag_std.ravel())
+        mi_all = hprior - hposterior
+        if np.any(mi_all < 0.0):
+            print(mi_all.ravel())
+            raise ValueError("Predictive MI < 0.0!")
         
         result = dict()
         for id, vehicle in self.vehicle_team.items():
-            #change the normaliz method
-            # normed_effect = sprayeffect_all / 100.0
+            # processing
+            if np.all(mi_all == 0.0):
+                normed_mi = np.ones_like(mi_all)
+            else:
+                normed_mi = (mi_all.max() - mi_all) / mi_all.ptp()
+                # normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
             normed_effect = (sprayeffect_all - sprayeffect_all.min()) / sprayeffect_all.ptp()
             # trans to matrix form
+            mi = np.zeros((self.task_extent[1]-self.task_extent[0],self.task_extent[3]-self.task_extent[2]))
             sprayeffect = np.zeros((self.task_extent[1]-self.task_extent[0],self.task_extent[3]-self.task_extent[2]))
             for i in range (self.task_extent[0],self.task_extent[1]):
                 for j in range (self.task_extent[2],self.task_extent[3]):
+                    mi[i,j] = normed_mi[i*(self.task_extent[3]-self.task_extent[2])+j]
                     sprayeffect[i,j] = normed_effect[i*(self.task_extent[3]-self.task_extent[2])+j]
-            scores = sprayeffect
+            scores = self.confidence*sprayeffect + (1-self.confidence)*mi
            
             path = self.greedy_search_multi_step(6, scores, id)[1:]
 
@@ -132,11 +150,6 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
                 # print(index)
                 if pathlen > len(path) - 1:
                     break
-                # if vehicle.goal_spray_flag == []:
-                #     goal_states[index,0] = path[index][0]
-                #     goal_states[index,1] = path[index][1]
-                #     spray_flag[index,0] = 1
-                # 先判断水量
                 if index < Setting.water_volume//Setting.replenish_speed:
                     if len(vehicle.goal_spray_flag) != 0 and initual_replenish == True and vehicle.goal_spray_flag[0] == -1 and water_volume_now < Setting.water_volume:
                         goal_states[index,0] = initual_state[0]
@@ -173,18 +186,19 @@ class NonMyopicLatticePlanningSprinkler(IStrategy):
             result[id] = (goal_states,spray_flag)
             
             #reduce effect
+            MIMAX = mi_all.max()
             for i in range(len(path)):
-                for m in range(3):
-                    for n in range(3):
-                        r = goal_states[i,0] -1 + m
-                        c = goal_states[i,1] -1 + n
+                for m in range(5):
+                    for n in range(5):
+                        r = goal_states[i,0] -2 + m
+                        c = goal_states[i,1] -2 + n
                         if r < self.task_extent[0] or r >= self.task_extent[1] or c < self.task_extent[2] or c >= self.task_extent[3]:
                             continue
-                        if m == 1 and n == 1:
+                        if m == 2 and n == 2:
                             if spray_flag[i,0] == True:
-                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.5))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
+                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.6))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
+                            mi_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)] = 0.9*MIMAX
                         else:
                             if spray_flag[i,0] == True:
-                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.3))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
-        print(result)               
+                                sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]=(1-(0.4))*sprayeffect_all[int(r*(self.task_extent[3]-self.task_extent[2])+c)]
         return result

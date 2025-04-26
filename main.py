@@ -18,8 +18,8 @@ def get_multi_robots(Setting):
 
 
 def get_strategy(rng, Setting, vehicle_team):
-    if Setting.strategy_name == "EffectOrientedSelectiveSpray":
-        strategy = pypolo2.strategies.SAEffectOrientedSelectiveSpray(
+    if Setting.strategy_name == "DualObjectScheduling":
+        strategy = pypolo2.strategies.SADualObjectScheduling(
                 task_extent=Setting.task_extent,
                 rng=rng,
                 vehicle_team=vehicle_team,
@@ -36,32 +36,14 @@ def get_strategy(rng, Setting, vehicle_team):
                 rng=rng,
                 vehicle_team=vehicle_team,
             )
-    elif Setting.strategy_name == "EffectOrientedGreedySpray":
-        strategy = pypolo2.strategies.SAEffectOrientedGreedySpray(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
     elif Setting.strategy_name == "NonmyonicLatticeSpray":
         strategy = pypolo2.strategies.NonMyopicLatticePlanningSprinkler(
                 task_extent=Setting.task_extent,
                 rng=rng,
                 vehicle_team=vehicle_team,
             )
-    elif Setting.strategy_name == "EffectOrientedMCTSSpray":
-        strategy = pypolo2.strategies.MCTSSpray(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "TRACT":
-        strategy = pypolo2.strategies.TRACT(
-                task_extent=Setting.task_extent,
-                rng=rng,
-                vehicle_team=vehicle_team,
-            )
-    elif Setting.strategy_name == "EffectOrientedMCTSSpray":
-        strategy = pypolo2.strategies.MCTSSpray(
+    elif Setting.strategy_name == "SATRACT":
+        strategy = pypolo2.strategies.SATRACT(
                 task_extent=Setting.task_extent,
                 rng=rng,
                 vehicle_team=vehicle_team,
@@ -91,23 +73,22 @@ def get_gprmodel(Setting, y_init, kernel):
     )
     return model
 
-#定义需要随时间更新的训练过程
+# running prodess
 def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
     current_step = 0 #总规划长度
     adaptive_step = Setting.adaptive_step #自适应长度
     change_step = 0
     spray_effect = 0 # 洒水效果
     result, MI_information, observed_env, computed_effect = None, None, None, None
+    agent_scores = []
     while current_step < Setting.max_num_samples:
         # 计算用于洒水效果,环境真实值已知
         allpoint_list = []
-        env_list = []
         for i in range (Setting.task_extent[0],Setting.task_extent[1]):
             for j in range (Setting.task_extent[2],Setting.task_extent[3]):
                 allpoint_list.append([i, j, model.time_stamp])
-                env_list.append(Setting.env[i,j])
         allpoint = np.array(allpoint_list)
-        env = np.array(env_list)
+
         mean, _ = model(allpoint)
         sprayeffect_all = pypolo2.objectives.sprayeffect.spray_effect(allpoint, allpoint, mean, Setting.task_extent).ravel()
         prior_diag_std, poste_diag_std, _, _ = model.prior_poste(allpoint)
@@ -118,32 +99,57 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
             print(mi_all.ravel())
             raise ValueError("Predictive MI < 0.0!")
         
-        sprayeffect_all = pypolo2.objectives.sprayeffect.spray_effect(allpoint, allpoint, env, Setting.task_extent).ravel()
         MI_information = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
-        observed_env = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
+        belief_state = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
         computed_effect = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
         for i in range (Setting.task_extent[0],Setting.task_extent[1]):
             for j in range (Setting.task_extent[2],Setting.task_extent[3]):
                 MI_information[i,j] = mi_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
-                observed_env[i,j] = Setting.env[i,j]
+                belief_state[i,j] = mean[i*(Setting.task_extent[3]-Setting.task_extent[2])+j,0]
                 computed_effect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
                 
         Setting.current_step = current_step
+
+        # calculate agent scores
+        sprayeffect = np.zeros((Setting.task_extent[1]-Setting.task_extent[0],Setting.task_extent[3]-Setting.task_extent[2]))
+        for i in range (Setting.task_extent[0],Setting.task_extent[1]):
+            for j in range (Setting.task_extent[2],Setting.task_extent[3]):
+                sprayeffect[i,j] = sprayeffect_all[i*(Setting.task_extent[3]-Setting.task_extent[2])+j]
+        scores = sprayeffect
+        # 计算每个车辆的得分,车辆周围一圈区域的洒水效果最大值
+        for id, vehicle in vehicle_team.items():
+            max_sprinkleeffect = 0
+            for a in range(3):
+                for b in range(3):
+                    c1 = vehicle.state[0] - 1 + a
+                    c2 = vehicle.state[1] - 1 + b
+                    if c1 < Setting.task_extent[0] or c1 >= Setting.task_extent[1] or c2 < Setting.task_extent[2] or c2 >= Setting.task_extent[3]:
+                        continue
+                    else:
+                        max_sprinkleeffect = np.max([max_sprinkleeffect,scores[int(c1),int(c2)]])
+                        scores[int(c1),int(c2)] = 0 # 避免重复覆盖
+            if len(agent_scores) < Setting.team_size:
+                agent_scores.append(max_sprinkleeffect)
+            else:
+                agent_scores[id-1] = np.max([agent_scores[id-1],max_sprinkleeffect])
         
         # scheduling and update agent goals ###################################################
-        if adaptive_step >= Setting.adaptive_step:
+        if adaptive_step >= Setting.adaptive_step:  
             start = tm.time()
-            result = Setting.strategy.get(model = model, Setting = Setting, pred = observed_env)
+            result = Setting.strategy.get(model = model, Setting = Setting, pred = belief_state, agent_scores = agent_scores)
             adaptive_step = 0
             for id, vehicle in vehicle_team.items():
                 vehicle.set_goals(result[id][0],result[id][1])
             end = tm.time()
+            print('current_step')
+            print(current_step)
             print('search_time')
-            print(end-start)    
+            print(end-start) 
+            agent_scores = []
             
         # calculate metrix and save 
         coverage, mean_airpollution, max_airpollution = evaluator.eval_results(Setting.env, Setting.task_extent, vehicle_team)
-        logger.append(current_step, Setting.env, observed_env, MI_information, computed_effect, vehicle_team, coverage, mean_airpollution, max_airpollution, spray_effect)
+        logger.append(current_step, Setting.env, belief_state, MI_information, computed_effect, vehicle_team, coverage, mean_airpollution, max_airpollution, spray_effect)
            
         # change source,每经过R_change_interval后，改变源分布和强度，
         if change_step >= Setting.R_change_interval:
@@ -151,25 +157,18 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
             change_step = 0
             if Setting.randomsource == True:
                 # gengerate two set of random numbers for source locations
-                numbers = rng.randint(0, 4, size=Setting.sourcenum * 2)
+                numbers = rng.randint(0, 3, size=Setting.sourcenum * 2)
                 pairs = rng.choice(numbers, size=(Setting.sourcenum, 2), replace=False)
                 for i in range(Setting.sourcenum):
-                    number = rng.randint(50, 70, size=1)
-                    # number= 200
-                    # Setting.RR[i,0] = int(pairs[i,0])
-                    # Setting.RR[i,1] = int(pairs[i,1])
-                    if Setting.RR[i,0]+pairs[i,0]-2 < Setting.grid_x-1 and Setting.RR[i,0] + pairs[i,0] - 2 >=0:
-                        Setting.RR[i,0] = int(Setting.RR[i,0]+pairs[i,0]-2)
-                    if Setting.RR[i,1]+pairs[i,1]-2 < Setting.grid_y-1 and Setting.RR[i,1] + pairs[i,1] - 2 >=0:
-                        Setting.RR[i,1] = int(Setting.RR[i,1]+pairs[i,1]-2)
+                    number = rng.randint(60, 70, size=1)
+                    if Setting.RR[i,0]+pairs[i,0]-1 < Setting.grid_x-1 and Setting.RR[i,0] + pairs[i,0] - 1 >=0:
+                        Setting.RR[i,0] = int(Setting.RR[i,0]+pairs[i,0]-1)
+                    if Setting.RR[i,1]+pairs[i,1]-1 < Setting.grid_y-1 and Setting.RR[i,1] + pairs[i,1] - 1 >=0:
+                        Setting.RR[i,1] = int(Setting.RR[i,1]+pairs[i,1]-1)
                     Setting.RR[i,2] = number
-                tstart = current_step
 
-        s = 1
         for i in range(Setting.sourcenum):
-             Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
-        # import sys
-        # sys.exit()
+             Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = Setting.RR[i,2]
         
         # 执行规划结果并推进仿真环境
         # 计算无洒水时的环境分布，推进表步长为1分钟
@@ -220,9 +219,9 @@ def run(rng, model, Setting, sensor, evaluator, logger, vehicle_team) -> None:
         print(Setting.sources)   
         Setting.env = env_withspray
         sensor.set_env(Setting.env)
-        # 移除污染标记
+        # 移除污染标记，当beliefstate中对应的区域污染已经降低很多
         for i in range(len(Setting.sources)-1, -1, -1):
-            if Setting.env[Setting.sources[i][0],Setting.sources[i][1]] <= 45:
+            if belief_state[Setting.sources[i][0],Setting.sources[i][1]] <= 40:
                 del Setting.sources[i]    
         
         # 计算洒水效果
@@ -254,15 +253,14 @@ def Set_initual_data(rng,Setting,sensor):
         numbers = rng.randint(0, 19, size=Setting.sourcenum * 2)
         pairs = rng.choice(numbers, size=(Setting.sourcenum, 2), replace=False)
         for i in range(Setting.sourcenum):
-            number = rng.randint(50, 70, size=1)
+            number = rng.randint(60, 70, size=1)
             Setting.RR[i,0] = int(pairs[i,0])
             Setting.RR[i,1] = int(pairs[i,1])
             Setting.RR[i,2] = number
 
-    s = 1
     Setting.R =  -3 * np.ones((Setting.grid_x, Setting.grid_y)) + 6 * rng.random((Setting.grid_x, Setting.grid_y))
     for i in range(Setting.sourcenum):
-         Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = s*Setting.RR[i,2]
+         Setting.R[Setting.RR[i,0],Setting.RR[i,1]] = Setting.RR[i,2]
             
     env_model = SP.Diffusion_Model(x_range = Setting.grid_x, y_range = Setting.grid_y,\
                  initial_field =  Setting.env, R_field =  Setting.R, data_sprayer_train = Setting.data_sprayer_train, t_start = 0) # build model
@@ -312,22 +310,16 @@ def main():
                 init_amplitude = args.amplitude, init_lengthscale = args.lengthscale, init_noise = args.init_noise,
                 lr_hyper = args.lr_hyper, lr_nn = args.lr_nn,
                 team_size = args.team_size, water_volume = args.water_volume, replenish_speed = args.replenish_speed,
-                max_num_samples = args.max_num_samples , bound1 = args.bound1, bound2 = args.bound2, bound3 = args.bound3,
+                max_num_samples = args.max_num_samples , bound0 = args.bound0, bound1 = args.bound1, bound2 = args.bound2, bound3 = args.bound3,
                 alpha = args.alpha,
                 Strategy_Name = args.strategy_name,
                 sche_step = args.sche_step, adaptive_step = args.adaptive_step, Env = args.Env,
                 effect_threshold = args.effect_threshold)
-
-    # environment initual
-    # env_model = get_env_model(Setting)
-    # Setting.env = env_model.solve(Setting.delta_t)
     
     # save directory
     # starttime = Setting.starttime.replace(' ', '-').replace(':', '-')
     # Setting.save_dir = '{}/{}/teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.team_size)
-    # print(Setting.sourcenum)
     Setting.save_dir = '{}/{}/numsource_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.sourcenum)
-    # Setting.save_dir = '{}/{}/bound1_{}teamsize_{}'.format(Setting.root_dir, Setting.strategy_name, Setting.bound1, Setting.team_size)
     # Setting.save_name = args.save_name
     evaluator = get_evaluator()
     logger = pypolo2.experiments.Logger(None, Setting)

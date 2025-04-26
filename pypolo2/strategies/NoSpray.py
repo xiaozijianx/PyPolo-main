@@ -41,7 +41,7 @@ class NoSpray(IStrategy):
         self.moving_context = None
 
         
-    def get(self, model: IModel, Setting, pred) -> np.ndarray:
+    def get(self, model: IModel, Setting, pred, agent_scores) -> np.ndarray:
         """Get goal states.
           不移动,不洒水,规划长度规定为8
         Parameters

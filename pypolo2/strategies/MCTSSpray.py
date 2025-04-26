@@ -54,7 +54,7 @@ class MCTSSpray(IStrategy):
         self.moving_context = None
 
         
-    def get(self, model: IModel, Setting, pred) -> np.ndarray:
+    def get(self, model: IModel, Setting, pred, agent_scores) -> np.ndarray:
         """Get goal states for sampling.
 
         Parameters
@@ -85,7 +85,7 @@ class MCTSSpray(IStrategy):
                                     agent_number=test_number,
                                     pollution_distribute = pred)
 
-        player = MCTSConcurrentPlayer(policy_value_fn, n_playout=Setting.bound1)
+        player = MCTSConcurrentPlayer(policy_value_fn, n_playout=Setting.bound0)
 
         # 搜索
         states = []

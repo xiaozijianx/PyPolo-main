@@ -9,13 +9,16 @@ for %%s in (7 11 18 20 25 36 42 50 60 72 80 85) do (
 @REM for %%s in (42 46 50 55 60 68 72 80 85 92) do (
     for %%t in (NonmyonicLatticeSpray) do (
         (
-            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 4 --sourcenum 1 --R_change_interval 3
-            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 4 --sourcenum 2 --R_change_interval 3
-            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 4 --sourcenum 3 --R_change_interval 3
-            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 4 --sourcenum 4 --R_change_interval 3
-            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 4 --sourcenum 5 --R_change_interval 3
-            python main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 18 --adaptive_step 4 --sourcenum 6 --R_change_interval 3
-            @REM python main.py --config %config% --seed %%s --strategy_name %%t --team_size 5 --sche_step 18 --adaptive_step 4
+            @REM python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 4 --sche_step 12 --adaptive_step 4 --sourcenum 1 --R_change_interval 9
+            @REM python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 4 --sche_step 12 --adaptive_step 4 --sourcenum 2 --R_change_interval 9
+            @REM python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 4 --sche_step 12 --adaptive_step 4 --sourcenum 3 --R_change_interval 9
+            @REM python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 4 --sche_step 12 --adaptive_step 4 --sourcenum 4 --R_change_interval 9
+            @REM python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 4 --sche_step 12 --adaptive_step 4 --sourcenum 5 --R_change_interval 9
+            python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 1 --sche_step 12 --adaptive_step 4 --sourcenum 2 --R_change_interval 9
+            python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 2 --sche_step 12 --adaptive_step 4 --sourcenum 2 --R_change_interval 9
+            python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 3 --sche_step 12 --adaptive_step 4 --sourcenum 2 --R_change_interval 9
+            python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 4 --sche_step 12 --adaptive_step 4 --sourcenum 2 --R_change_interval 9
+            python .\main.py --config %config% --seed %%s --strategy_name %%t --team_size 5 --sche_step 12 --adaptive_step 4 --sourcenum 2 --R_change_interval 9
         ) || (
             REM Append the ERRORLEVEL (PID) to the pids variable
             set "pids=!pids!!ERRORLEVEL!!"

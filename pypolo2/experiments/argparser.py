@@ -86,17 +86,21 @@ def parse_arguments(verbose=False):
                         type=float,
                         default=0.0,
                         help="naive effect_threshold")
+    parser.add_argument("--bound0",
+                        type=int,
+                        default=100,
+                        help="simulated annealing round for information initual search")
     parser.add_argument("--bound1",
                         type=int,
-                        default=200,
+                        default=30,
                         help="simulated annealing round for initual search")
     parser.add_argument("--bound2",
                         type=int,
-                        default=20,
+                        default=15,
                         help="simulated annealing round for optimal search")
     parser.add_argument("--bound3",
                         type=int,
-                        default=100,
+                        default=50,
                         help="simulated annealing round for later search")    
     parser.add_argument("--time_before_sche",
                         type=int,
@@ -134,10 +138,10 @@ def parse_arguments(verbose=False):
                         type=int,
                         default=4,
                         help="water volume of one vehicle")
-    parser.add_argument('--alpha', type=float, default=1.5, required=False, help='imformation gain weight.')
+    parser.add_argument('--alpha', type=float, default=1.6, required=False, help='imformation gain weight.')
     parser.add_argument("--root_dir",
                         type=str,
-                        default="./output/",
+                        default="../outputs",
                         help="Directory for logs.")
     args = parser.parse_args()
 
@@ -149,6 +153,6 @@ def parse_arguments(verbose=False):
     elif sys.platform == 'win32':
         print("当前系统是Windows")
     
-    args.save_name = f'SEED_{args.seed}_X{args.grid_x}_Y{args.grid_y}_VS{args.team_size}_TS{args.max_num_samples}_SS{args.sche_step}_AS{args.adaptive_step}_SN{args.sourcenum}_RS{args.replenish_speed}_WV{args.water_volume}'
+    args.save_name = f'SEED_{args.seed}_VS{args.team_size}_TS{args.max_num_samples}_SS{args.sche_step}_AS{args.adaptive_step}_SN{args.sourcenum}_RS{args.replenish_speed}_WV{args.water_volume}_ALPHA{args.alpha}'
         
     return args

@@ -8,15 +8,15 @@ class Config:
     def __init__(self, root_dir = "../outputs", save_name = "text", strategy = None, 
                  diffusivity_K =1.2, grid_x = 20, grid_y = 20, time_co = 0.0001, delta_t = 0.01,
                  sensing_rate = 1.0, noise_scale = 1.0, num_init_samples = 1, seed = 11,
-                 time_before_sche = 5, station_size = 1, sourcenum = 4, R_change_interval = 15,
+                 time_before_sche = 5, station_size = 1, sourcenum = 3, R_change_interval = 6,
                  init_amplitude = 1.0, init_lengthscale = 0.5, init_noise = 1.0,
                  lr_hyper = 0.01, lr_nn = 0.001,
                  team_size = 4, water_volume=4, replenish_speed = 1,
-                 max_num_samples = 18, current_step = 0 , bound0=70, bound1 = 100, bound2 = 15, bound3 = 50,
+                 max_num_samples = 48, current_step = 0 , bound0=100, bound1 = 30, bound2 = 15, bound3 = 50,
                 #  alpha = [0.75,0.9,0.99,1.05,1.5],
-                 alpha = 1.4,
+                 alpha = 1.5,
                  Strategy_Name = "SA_Dualobject",
-                 sche_step = 15, adaptive_step = 3, Env = "Dynamic",
+                 sche_step = 12, adaptive_step = 3, Env = "Dynamic",
                  effect_threshold = 0.0) -> None:
         
         # 实验数据选择,污染源数目选择,森林灭火拓展试验专用
@@ -145,6 +145,8 @@ class Config:
         # 目标位置分层密度
         self.layer_xy = [10,9,7] # midu
         self.layer_t = [2,1,2]  # midu
+        # self.layer_xy = [5,4,3] # midu
+        # self.layer_t = [2,1,3]  # midu
 
     
         

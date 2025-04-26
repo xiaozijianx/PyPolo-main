@@ -334,12 +334,8 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
             curr_context = new_mc_context
           elif delta_MI < 0:
             accept_prob = np.exp(delta_MI / (curr_k * Temp[0]))
-            if(rng.random() < accept_prob):
-              sprayeffect_before = curr_context.CalculateSpraySQ(method = 2)
-              sprayeffect_after = new_mc_context.CalculateSpraySQ(method = 2)
-              delta_sprayeffect = sprayeffect_after - sprayeffect_before
-              if delta_sprayeffect >= 0:
-                curr_context = new_mc_context
+            # if(rng.random() < accept_prob):
+            #   curr_context = new_mc_context
         else:
           sprayeffect_before = curr_context.CalculateSpraySQ(method = 2)
           sprayeffect_after = new_mc_context.CalculateSpraySQ(method = 2)
@@ -380,11 +376,7 @@ def SimulatedAnnealing(rng, origin_mc_context: GridMovingContext, *,enough_info 
             elif delta_MI < 0:
               accept_prob = np.exp(delta_MI / (curr_k * Temp[0]))
               if(rng.random() < accept_prob):
-                sprayeffect_before = curr_context.CalculateSpraySQ(method = 2)
-                sprayeffect_after = new_mc_context.CalculateSpraySQ(method = 2)
-                delta_sprayeffect = sprayeffect_after - sprayeffect_before
-                if delta_sprayeffect >= 0:
-                  curr_context = new_mc_context
+                curr_context = new_mc_context
           else:
             sprayeffect_before = curr_context.CalculateSpraySQ(method = 2)
             sprayeffect_after = new_mc_context.CalculateSpraySQ(method = 2)
@@ -429,82 +421,28 @@ def SimulatedAnnealingInitual(rng, origin_context: GridMovingContext,bound0,boun
   Info_Temp = 30
   Spray_Temp = 50
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound0)
-  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound0, object = 1)
+  k = math.pow(0.0002, 1 / bound3)
+  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 1)
   mi_high = context.CalculateMISQ()
   time2 = tm.time()
   print("信息搜索耗时1")
   print(time2-time1)
   
-  # 然后进行综合规划
-  # 首先计算信息目标，并且对不同车辆划分角色
-  # object_mi = np.zeros(context.GetAgentNumber())
-  # # 对agent_scores排序
-  # sorted_indices = sorted(
-  #   range(len(agent_scores)),
-  #   key=lambda i: (agent_scores[i], i)  # 先按分数升序，再按原索引升序
-  # )
-  # rank = [0] * len(agent_scores)
-  # for pos, idx in enumerate(sorted_indices):
-  #   rank[idx] = pos
-  # for i in range(context.GetAgentNumber()):
-  #   object_mi[i] = mi_high * alpha * 1.4 *(0.99**currentstep)*(0.93**rank[i])
-  
   object_mi = np.zeros(context.GetAgentNumber())
-  # 对agent_scores排序
-  sorted_indices = sorted(
-    range(len(agent_scores)),
-    key=lambda i: (agent_scores[i], i)  # 先按分数升序，再按原索引升序
-  )
-  rank = [0] * len(agent_scores)
-  spray_vehicle = 1
-  for pos, idx in enumerate(sorted_indices):
-    if agent_scores[idx] > 25:
-      object_mi[idx] = mi_high * alpha *(0.99**currentstep)*(0.5**spray_vehicle)
-      # object_mi[idx] = mi_high * alpha * 1.4 *(0.99**currentstep)*(0.01)
-      spray_vehicle = spray_vehicle + 1
-    else:
-      object_mi[idx] = mi_high * alpha *(0.99**currentstep)
-    rank[idx] = pos
-  print("当前车辆分数")
-  print(agent_scores)
-  print("车辆得分排名")
-  print(rank)
+  for i in range(context.GetAgentNumber()):
+    object_mi[i] = mi_high * alpha * 0.6
   print(object_mi)
-  # import sys
-  # sys.exit()
 
   # 然后分步规
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 0.5
-  Spray_Temp = 10
+  Info_Temp = 30
+  Spray_Temp = 50
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound3)
-  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 2, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound2)
+  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
   time4 = tm.time()
   print("Stage1 耗时")
   print(time4-time2)
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 10
-  Spray_Temp = 100
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 3, object_mi = object_mi)
-  time5 = tm.time()
-  print("Stage2 耗时")
-  print(time5-time4)
-  
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 0.5
-  Spray_Temp = 10
-  # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
-  time6 = tm.time()
-  print("Stage3 耗时")
-  print(time6-time5)
 
   return context, sq_list_total + sq_list
 
@@ -521,95 +459,33 @@ def SimulatedAnnealingProcess(rng, origin_context: GridMovingContext, bound1, bo
   Info_Temp = 20
   Spray_Temp = 50
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound3)
-  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound3, object = 1)
+  k = math.pow(0.0002, 1 / bound1)
+  context, _ = SimulatedAnnealing(rng,origin_context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 1)
   mi_high = context.CalculateMISQ()
   time2 = tm.time()
   print("信息搜索耗时1")
   print(time2-time1)
 
-  
-  # 然后进行综合规划
-  # 首先计算信息目标
-  # object_mi = np.zeros(context.GetAgentNumber())
-  # # 对agent_scores排序
-  # sorted_indices = sorted(
-  #   range(len(agent_scores)),
-  #   key=lambda i: (agent_scores[i], i)  # 先按分数升序，再按原索引降序
-  # )
-  # rank = [0] * len(agent_scores)
-  # for pos, idx in enumerate(sorted_indices):
-  #   rank[idx] = pos
-  # for i in range(context.GetAgentNumber()):
-  #   object_mi[i] = mi_high * alpha *(0.99**currentstep)*(0.93**rank[i])
-
   object_mi = np.zeros(context.GetAgentNumber())
-  # 对agent_scores排序
-  sorted_indices = sorted(
-    range(len(agent_scores)),
-    key=lambda i: (agent_scores[i], i)  # 先按分数升序，再按原索引升序
-  )
-  rank = [0] * len(agent_scores)
-  spray_vehicle = 1
-  for pos, idx in enumerate(sorted_indices):
-    if agent_scores[idx] > 30:
-      object_mi[idx] = mi_high * alpha *(0.99**currentstep)*(0.4**spray_vehicle)
-      # object_mi[idx] = mi_high * alpha * 1.4 *(0.99**currentstep)*(0.01)
-      spray_vehicle = spray_vehicle + 1
-    else:
-      object_mi[idx] = mi_high * alpha *(0.99**currentstep)
-    rank[idx] = pos
-  print("当前车辆分数")
-  print(agent_scores)
-  print("车辆得分排名")
-  print(rank)
+  for i in range(context.GetAgentNumber()):
+    object_mi[i] = mi_high * alpha * 0.5
+  print("信息目标")
   print(object_mi)
   
   single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 0.5
-  Spray_Temp = 10
+  Info_Temp = 20
+  Spray_Temp = 50
   Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound3)
-  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound1, object = 2, object_mi = object_mi)
+  k = math.pow(0.0002, 1 / bound2)
+  context, sq_list = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
   time3 = tm.time()
   print("Stage1 耗时")
   print(time3-time2)
 
-  # 对一阶段的信息指标进行画图：
-  # print("currentstep")
-  # print(currentstep)
-  # fig, ax = plt.subplots(1, 1, figsize=(8, 5))  # 5行4列的子图布局，可以根据需要调整大小
-  # ax.plot(sq_list_total+sq_list)
-  # ax.set_ylim([-10, 70])
-  # ax.set_title(f"sq_list_total")
-  # plt.tight_layout()
-  # plt.show()
-
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 10
-  Spray_Temp = 200
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 3, object_mi = object_mi)
-  time4 = tm.time()
-  print("Stage2 耗时")
-  print(time4-time3)
-  
-  single_playout = origin_context.GetAgentNumber() * origin_context.GetMaxTime()
-  Info_Temp = 0.5
-  Spray_Temp = 10
-  # Spray_Temp = np.max((20 - origin_context.Setting.current_step * 3,5))
-  Temp = [Info_Temp, Spray_Temp]
-  k = math.pow(0.0002, 1 / bound2)
-  context, _ = SimulatedAnnealing(rng, context, n_playout = single_playout, initial_temp = Temp, k = k, bound = bound2, object = 4, object_mi = object_mi)
-  time5 = tm.time()
-  print("Stage3 耗时")
-  print(time5-time4)
-
   return context, sq_list_total + sq_list
 
 #定义SA算法包装
-class SADualObjectScheduling(IStrategy):
+class SATRACT(IStrategy):
     """Informative planning based on Mutual informaiton and sprinkler effect on latttice map use SA algorithms."""
 
     def __init__(
@@ -665,70 +541,6 @@ class SADualObjectScheduling(IStrategy):
         #compute predict mean and spray_effect of all point
         mean, _ = model(allstate_forpred)
         sprayeffect_all = spray_effect(allstate_forpred,allstate_forpred,mean,self.task_extent).ravel()
-        
-        # #compute mi of all points
-        # prior_diag_std, poste_diag_std, poste_cov, poste_cov = model.prior_poste(allstate_forinfor)
-        # hprior = gaussian_entropy(prior_diag_std.ravel())
-        # hposterior = gaussian_entropy(poste_diag_std.ravel())
-        # mi_all = hprior - hposterior
-        # if np.any(mi_all < 0.0):
-        #     print(mi_all.ravel())
-        #     raise ValueError("Predictive MI < 0.0!")
-        
-        # #标准化
-        # if np.all(mi_all == 0.0):
-        #     normed_mi = np.ones_like(mi_all)
-        # else:
-        #     # normed_mi = (mi_all.max() - mi_all) / mi_all.ptp()
-        #     normed_mi = (mi_all - mi_all.min()) / mi_all.ptp()
-        # normed_effect = (sprayeffect_all - sprayeffect_all.min()) / sprayeffect_all.ptp()
-        # # trans to matrix form
-        # mi = np.zeros((self.task_extent[1]-self.task_extent[0],self.task_extent[3]-self.task_extent[2]))
-        # sprayeffect = np.zeros((self.task_extent[1]-self.task_extent[0],self.task_extent[3]-self.task_extent[2]))
-
-        # for i in range (self.task_extent[0],self.task_extent[1]):
-        #     for j in range (self.task_extent[2],self.task_extent[3]):
-        #         mi[i,j] = normed_mi[i*(self.task_extent[3]-self.task_extent[2])+j]
-        #         sprayeffect[i,j] = normed_effect[i*(self.task_extent[3]-self.task_extent[2])+j]
-        # scores = self.confidence*sprayeffect + (1-self.confidence)*mi
-        
-        # # 计算每个车辆的得分,
-        # agent_init_position = []
-        # agent_scores=[]
-        # for id, vehicle in self.vehicle_team.items():
-        #   agent_init_position.append(vehicle.state[0:2])
-        #   score = 0
-        #   for a in range(3):
-        #     for b in range(3):
-        #       c1 = vehicle.state[0] - 1 + a
-        #       c2 = vehicle.state[1] - 1 + b
-        #       if c1 < self.task_extent[0] or c1 >= self.task_extent[1] or c2 < self.task_extent[2] or c2 >= self.task_extent[3]:
-        #         continue
-        #       else:
-        #         score = score + scores[int(c1),int(c2)]
-        #   agent_scores.append(score)
-
-        # sprayeffect = np.zeros((self.task_extent[1]-self.task_extent[0],self.task_extent[3]-self.task_extent[2]))
-        # for i in range (self.task_extent[0],self.task_extent[1]):
-        #     for j in range (self.task_extent[2],self.task_extent[3]):
-        #         sprayeffect[i,j] = sprayeffect_all[i*(self.task_extent[3]-self.task_extent[2])+j]
-        # scores = sprayeffect
-        # # 计算每个车辆的得分,车辆周围一圈区域的洒水效果最大值
-        # agent_init_position = []
-        # agent_scores=[]
-        # for id, vehicle in self.vehicle_team.items():
-        #   agent_init_position.append(vehicle.state[0:2])
-        #   max_sprinkleeffect = 0
-        #   for a in range(3):
-        #     for b in range(3):
-        #       c1 = vehicle.state[0] - 1 + a
-        #       c2 = vehicle.state[1] - 1 + b
-        #       if c1 < self.task_extent[0] or c1 >= self.task_extent[1] or c2 < self.task_extent[2] or c2 >= self.task_extent[3]:
-        #         continue
-        #       else:
-        #         max_sprinkleeffect = np.max([max_sprinkleeffect,scores[int(c1),int(c2)]])
-        #   score = max_sprinkleeffect
-        #   agent_scores.append(score)
 
         # 正式洒水规划
         # 计算当前需要规划的步数
@@ -767,10 +579,6 @@ class SADualObjectScheduling(IStrategy):
                           allpoint_list.append([i, j, model.time_stamp + num * Setting.time_co])
           layer = layer + 1
         allpoint = np.array(allpoint_list)
-        # print("分层情况")
-        # print(allpoint)
-        # import sys
-        # sys.exit()
 
         if self.moving_context is None:
           agent_init_position = []

@@ -3,22 +3,17 @@ from .Nonmyopic_LatticePlanning_sprinkler import NonMyopicLatticePlanningSprinkl
 from .MaximumCoverageSpray import SAMaximumCoverageSpray
 from .NoSpray import NoSpray
 from .MCTSSpray import MCTSSpray
-from .SA_EffectOrientedGreedySpray import SAEffectOrientedGreedySpray
-from .TRACT import TRACT
-from .SA_EffectOrientedSelectiveSpray_Traffic import SAEffectOrientedSelectiveSpray_Traffic
 from .SA_DualObjectScheduling import SADualObjectScheduling
+from .SA_TRACT import SATRACT
 from .strategy import IStrategy
 
 __all__ = [
     "SAEffectOrientedSelectiveSpray",
     "NonMyopicLatticePlanningSprinkler",
     "SAMaximumCoverageSpray",
-    "SAEffectOrientedGreedySpray",
     "MCTSSpray",
     "NoSpray",
-    "TRACT",
-    "SAEffectOrientedSelectiveSpray_Traffic",
     "SADualObjectScheduling",
-    "SA"
+    "SATRACT",
     "IStrategy",
 ]
