@@ -7,14 +7,11 @@ from time import time
 import itertools
 import numpy as np
 import math
-import time as tm
-# from ..Common.QFunctions import time_decay_aggregation, calculate_kldiv
-# from ..Common.common import even_dist, gaussian_dist, dg_corner_dist, noise_dist
 from ..models import IModel
 from ..objectives.entropy import gaussian_entropy, gaussian_entropy_multivariate
 from ..objectives.sprayeffect import spray_effect, calculate_effect
 MoveMatrix2D = list(itertools.product([-1, 0, 1], [-1, 0, 1]))
-MoveMatrix2DWithSprayControl = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))#暂时假设每一次均只能选择一步，并选择是否洒水，1：洒水，-1：补水
+MoveMatrix2DWithSprayControl = list(itertools.product([-1, 0, 1], [-1, 0, 1], [-1, 0, 1]))
 SprayControl = list(itertools.product([-1, 0, 1]))
 
 class GridMovingContext():
@@ -24,7 +21,6 @@ class GridMovingContext():
     target_dist: A mapshape sized map, indicating Object data value distributions.
     NOTE: the length of trace set is 1 more than time
     """
-    #参数
     self.Setting = Setting
     if Setting.current_step > Setting.max_num_samples - Setting.sche_step:
       if Setting.max_num_samples - Setting.current_step > 7:
@@ -33,15 +29,10 @@ class GridMovingContext():
         self.Setting.sche_step = 8
     else:
       self.Setting.sche_step = Setting.sche_step
-    #作业区域
     self.map_shape = (Setting.task_extent[1], Setting.task_extent[3])
-    #规划时长
     self.time = self.Setting.sche_step
-    #初始智能体位置
     self.agent_init_position = agent_init_position
-    #智能体的移动模型
     self.move_matrix = move_matrix
-    #预测模型及所需参数
     self.model = model
     self.alpha = alpha
     self.pollution_distribute = pollution_distribute
@@ -53,19 +44,13 @@ class GridMovingContext():
     self.time_co = Setting.time_co
     self.last_info = 0.5
     
-    #智能体策略矩阵
-    # 定义初始动作，原地连续洒水，策略矩阵不再存放动作标号，而直接存放动作
     self.policy_matrix = self.init_policy_matrix()
-    #智能体轨迹，存放了包括初始轨迹在内，轨迹是一系列二维坐标
     self.curr_trace_set = self.calculate_trace_set()
-    #当前轨迹所覆盖矩阵
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()
-    #可选动作长度
     self.possible_actions = len(self.move_matrix)
 
   
   def init_policy_matrix(self):
-    #初始策略矩阵，根据车辆的水量和补水速度计算
     replenish_speed = self.Setting.replenish_speed
     water_volume = self.Setting.water_volume
     replenish_time = math.ceil(water_volume/replenish_speed)
@@ -109,8 +94,6 @@ class GridMovingContext():
                 r = int(r0 - 2 + a) 
                 c = int(c0 - 2 + b)
                 effect_rate = 1
-                # 判断该区域是否为污染源区域
-                # self.Setting.sources
                 for n in range(len(self.Setting.sources)):
                   if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
                     effect_rate = 0.5
@@ -119,21 +102,18 @@ class GridMovingContext():
                 if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
                   if a == 2 and b == 2:
                     spray_effect = spray_effect + spray_done[i,r,c]*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - effect_rate*calculate_effect(pollution_distribute[r,c])
                     for m in range(self.agent_number):
                       if m != i and spray_done[i,r,c] == 1:
                         spray_done[m,r,c] = 0.1
                   elif (a - 2)**2 + (b - 2)**2 <= 2:
                     spray_effect = spray_effect + spray_done[i,r,c]*0.7*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - 0.7*effect_rate*calculate_effect(pollution_distribute[r,c])
                     for m in range(self.agent_number):
                       if m != i and spray_done[i,r,c] == 1:
                         spray_done[m,r,c] = 0.3
                   else:
                     spray_effect = spray_effect + spray_done[i,r,c]*0.5*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
                     for m in range(self.agent_number):
                       if m != i and spray_done[i,r,c] == 1:
@@ -158,8 +138,6 @@ class GridMovingContext():
                 r = int(r0 - 2 + a) 
                 c = int(c0 - 2 + b)
                 effect_rate = 1
-                # 判断该区域是否为污染源区域
-                # self.Setting.sources
                 for n in range(len(self.Setting.sources)):
                   if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
                     effect_rate = 0.5
@@ -168,21 +146,18 @@ class GridMovingContext():
                 if r >= 0 and r < self.map_shape[0] and c >= 0 and c < self.map_shape[1]:
                   if a == 2 and b == 2:
                     spray_effect = spray_effect + spray_done[i,r,c]*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - effect_rate*calculate_effect(pollution_distribute[r,c])
                     for m in range(self.agent_number):
                       if m != i and spray_done[i,r,c] == 1:
                         spray_done[m,r,c] = 0.1
                   elif (a - 2)**2 + (b - 2)**2 <= 2:
                     spray_effect = spray_effect + spray_done[i,r,c]*0.7*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - 0.7*effect_rate*calculate_effect(pollution_distribute[r,c])
                     for m in range(self.agent_number):
                       if m != i and spray_done[i,r,c] == 1:
                         spray_done[m,r,c] = 0.3
                   else:
                     spray_effect = spray_effect + spray_done[i,r,c]*0.5*0.15*(self.Setting.sche_step+18-j)*calculate_effect(pollution_distribute[r,c])
-                    # spray_effect = spray_effect + 0.5*calculate_effect(pollution_distribute[r,c])
                     pollution_distribute[r,c] = pollution_distribute[r,c] - 0.5*effect_rate*calculate_effect(pollution_distribute[r,c])
                     for m in range(self.agent_number):
                       if m != i and spray_done[i,r,c] == 1:
@@ -204,7 +179,6 @@ class GridMovingContext():
       for j in range(self.time):  
         spray_area = []
         for i in range(self.agent_number):
-          # 先判断是否进入了拥堵区域
           r0 = curr_trace_set[i, j, 0]
           c0 = curr_trace_set[i, j, 1]
           jam_flag = 0
@@ -215,15 +189,11 @@ class GridMovingContext():
               break
 
           if self.policy_matrix[i, j, 2] == 1 and jam_flag == 0:
-            # r0 = curr_trace_set[i, j, 0]
-            # c0 = curr_trace_set[i, j, 1]
             for a in range(5):
               for b in range(5):
                 r = int(r0 - 2 + a) 
                 c = int(c0 - 2 + b)
                 effect_rate = 1
-                # 判断该区域是否为污染源区域
-                # self.Setting.sources
                 for n in range(len(self.Setting.sources)):
                   if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
                     effect_rate = 0.5
@@ -251,8 +221,6 @@ class GridMovingContext():
                     
       return spray_effect
     elif method == 4:
-      # calcullate spray effcet
-      # 该方法在补水时将占用空间还原
       spray_effect = 0
       curr_trace_set = self.curr_trace_set.copy()
       pollution_distribute = self.pollution_distribute.copy()
@@ -271,15 +239,11 @@ class GridMovingContext():
               break
 
           if self.policy_matrix[i, j, 2] == 1 and jam_flag == 0:
-            # r0 = curr_trace_set[i, j, 0]
-            # c0 = curr_trace_set[i, j, 1]
             for a in range(5):
               for b in range(5):
                 r = int(r0 - 2 + a) 
                 c = int(c0 - 2 + b)
                 effect_rate = 1
-                # 判断该区域是否为污染源区域
-                # self.Setting.sources
                 for n in range(len(self.Setting.sources)):
                   if r == self.Setting.sources[n][0] and c == self.Setting.sources[n][1]:
                     effect_rate = 0.5
@@ -338,6 +302,7 @@ class GridMovingContext():
       # prior_entropy = gaussian_entropy_multivariate(prior_cov)
       # poste_entropy = gaussian_entropy_multivariate(poste_cov)
       # mi = prior_entropy - poste_entropy
+      # 下面的方式计算更省时间
       mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
     else:
       #calculate mi at whole time period，all_state are about the whole time
@@ -357,19 +322,12 @@ class GridMovingContext():
       _, _, prior_cov, poste_cov = self.model.prior_poste(allpoint)
       if processed_points2.shape[0] > 0:
           self.model.reduce_data_x(processed_points2.shape[0])
-      # time2 = tm.time()
-      # prior_entropy = gaussian_entropy_multivariate(prior_cov) # 原版方法，在仅搜索信息量时搜索时间为400s-500s
-      # # print(prior_entropy)
-      # time3 = tm.time()
+
+      # prior_entropy = gaussian_entropy_multivariate(prior_cov)
       # poste_entropy = gaussian_entropy_multivariate(poste_cov)
-      # time4 = tm.time()
-      # # print("forward 计算耗时")
-      # # print(time2-time1)
-      # # print("熵计算耗时")
-      # # print(time3-time2) 
-      # # print(time4-time3) 
       # mi = prior_entropy - poste_entropy
-      mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0] # 使用迹，则相同条件耗时为17s
+      # 下面的方式计算更省时间
+      mi = (prior_cov.trace()- poste_cov.trace())/prior_cov.shape[0]
 
     return mi
   
@@ -438,12 +396,10 @@ class GridMovingContext():
           curr_trace_set[i, j, 2:3] = self.Setting.water_volume
           curr_trace_set[i, j, 3] = self.model.time_stamp
         else:
-          # curr_trace_set[i, j, 0:2] = np.array(self.move_matrix[self.policy_matrix[i, j - 1]][0:2]) + curr_trace_set[i, j - 1, 0:2]
           curr_trace_set[i, j, 0:2] = np.array(self.policy_matrix[i, j - 1, 0:2]) + curr_trace_set[i, j - 1, 0:2]
           # 洒水
           # if self.move_matrix[self.policy_matrix[i, j - 1]] == 1:
           if self.policy_matrix[i, j - 1, 2] == 1:
-            # curr_trace_set[i, j, 2] = curr_trace_set[i, j - 1, 2] - self.move_matrix[self.policy_matrix[i, j - 1]][2]
             curr_trace_set[i, j, 2] = curr_trace_set[i, j - 1, 2] - self.policy_matrix[i, j - 1, 2]
           # 补水
           elif self.policy_matrix[i, j - 1, 2] == -1:
@@ -613,12 +569,6 @@ class GridMovingContext():
     self.model = model
     self.pollution_distribute = pollution_distribute
     self.allpoint = allpoint
-    
-    # test,打印上一次的trace
-    # print("last trace")
-    # print(self.curr_trace_set)
-    # print(self.Setting.jam_time)
-
 
     # 智能体策略矩阵,更新策略矩阵, 考虑jam
     # jam_time[i], 每个车辆分开处理
@@ -676,9 +626,6 @@ class GridMovingContext():
           self.curr_trace_set[j,self.time - adaptive_step + i + 1, 2] \
             = self.curr_trace_set[j,self.time - adaptive_step + i, 2] + self.Setting.replenish_speed
           self.curr_trace_set[j,self.time - adaptive_step + i + 1, 3] = self.curr_trace_set[j,self.time - adaptive_step + i, 3] + self.time_co * (self.Setting.jam_time[j] + 1)
-    
-    # print("new trace")
-    # print(self.curr_trace_set)
-    # sys.exit()
+
     #当前轨迹所覆盖矩阵
     self.curr_matrixA, self.curr_matrixB, self.curr_matrixC = self.calculate_matrix()

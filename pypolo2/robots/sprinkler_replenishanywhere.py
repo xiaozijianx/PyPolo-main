@@ -19,6 +19,7 @@ class SPRINKLER_REPLENISHANYWHERE(IRobot):
         ----------
         init_state: np.ndarray, shape=(dim_states, ), dtype=np.float64
             Initial robot state.
+            可以在任意地方补水的洒水车
 
         """
         self._check_inputs(

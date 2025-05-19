@@ -22,22 +22,14 @@ from ..robots import IRobot
 
 # return 0 if success, -1 if invalid
 # a action is a tuple specifying time, move
-#尝试移动位置，仅考虑位置移动
 def try_move(context, agent, time, move):
-  #获得智能体的动作列表
   MoveMatrix = context.GetMoveMatrices()
-  #获得所选的智能体轨迹list=[time,action], time=[0:num],action=[x,y,volume,timestamp]
   agent_position_list = context.curr_trace_set[agent, :, :].copy()
-  #获得所选智能体所选时刻的当前动作
   previous_policy = context.policy_matrix[agent].copy()
-  #判断当前动作是否为补水状态，补水状态不可移动
   if previous_policy[time,2] == -1:
     return None, None
-  #计算动作之间的差值(移动)
   move_diff = np.array(MoveMatrix[move][0:2]) - previous_policy[time, 0:2]
-  #计算更新移动动作后的智能体轨迹，所选时刻后均会更新
   agent_position_list[(time + 1):, 0:2] += move_diff
-  #检查轨迹是否有效
   if(context.CheckValid(agent_position_list)):
     new_policy = previous_policy.copy()
     new_policy[time, 0:2] = np.array(MoveMatrix[move][0:2])
